@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { OnboardingProvider, useOnboarding } from "./context/OnboardingContext";
 import { LoginPage } from "./components/auth/LoginPage";
