@@ -1,4 +1,3 @@
-import React from 'react';
 import { User, Building2, Wrench, CreditCard, Check } from 'lucide-react';
 import { useOnboarding } from '../../../context/OnboardingContext';
 

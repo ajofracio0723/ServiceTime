@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Mail, Lock, Phone, Upload } from 'lucide-react';
 import { useOnboarding } from '../../../context/OnboardingContext';
 import { validateEmail, validatePassword, validateRequired, validatePhone } from '../../../utils/validation';
@@ -6,6 +6,7 @@ import { validateEmail, validatePassword, validateRequired, validatePhone } from
 export const PersonalInfoStep = () => {
   const { state, dispatch } = useOnboarding();
   const { personalInfo } = state.data;
+  const { showValidationErrors } = state;
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -42,8 +43,10 @@ export const PersonalInfoStep = () => {
   };
 
   useEffect(() => {
-    validateStep();
-  }, [personalInfo]);
+    if (showValidationErrors) {
+      validateStep();
+    }
+  }, [personalInfo, showValidationErrors]);
 
   return (
     <div className="space-y-6">
@@ -62,12 +65,12 @@ export const PersonalInfoStep = () => {
             type="text"
             value={personalInfo.name}
             onChange={(e) => handleChange('name', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.name ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.name ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Enter your full name"
           />
-          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          {showValidationErrors && errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
 
         <div>
@@ -79,12 +82,12 @@ export const PersonalInfoStep = () => {
             type="email"
             value={personalInfo.email}
             onChange={(e) => handleChange('email', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.email ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.email ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Enter your email"
           />
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          {showValidationErrors && errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
 
         <div>
@@ -96,12 +99,12 @@ export const PersonalInfoStep = () => {
             type="password"
             value={personalInfo.password}
             onChange={(e) => handleChange('password', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.password ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.password ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Create a secure password"
           />
-          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          {showValidationErrors && errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
         </div>
 
         <div>
@@ -113,12 +116,12 @@ export const PersonalInfoStep = () => {
             type="tel"
             value={personalInfo.phone}
             onChange={(e) => handleChange('phone', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.phone ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Enter your phone number"
           />
-          {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+          {showValidationErrors && errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
         </div>
 
         <div>
@@ -126,9 +129,9 @@ export const PersonalInfoStep = () => {
             <Upload className="inline w-4 h-4 mr-2" />
             Profile Picture (Optional)
           </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-            <Upload className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-sm text-gray-600">Click to upload or drag and drop</p>
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 cursor-pointer group">
+            <Upload className="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
+            <p className="mt-2 text-sm text-gray-600 group-hover:text-blue-700">Click to upload or drag and drop</p>
             <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
           </div>
         </div>

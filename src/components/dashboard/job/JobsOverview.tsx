@@ -1,4 +1,3 @@
-import React from 'react';
 import { Calendar, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 
 // Mock data using the domain model structure

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   UserPlus, 
   Users, 
@@ -16,7 +16,6 @@ import {
   XCircle,
   Settings,
   Key,
-  Award,
   Calculator
 } from 'lucide-react';
 

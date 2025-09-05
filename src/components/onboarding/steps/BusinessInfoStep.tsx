@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Building2, Phone, Mail, Upload } from 'lucide-react';
 import { useOnboarding } from '../../../context/OnboardingContext';
 import { validateEmail, validateRequired, validatePhone } from '../../../utils/validation';
@@ -6,6 +6,7 @@ import { validateEmail, validateRequired, validatePhone } from '../../../utils/v
 export const BusinessInfoStep = () => {
   const { state, dispatch } = useOnboarding();
   const { businessInfo } = state.data;
+  const { showValidationErrors } = state;
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -38,8 +39,10 @@ export const BusinessInfoStep = () => {
   };
 
   useEffect(() => {
-    validateStep();
-  }, [businessInfo]);
+    if (showValidationErrors) {
+      validateStep();
+    }
+  }, [businessInfo, showValidationErrors]);
 
   return (
     <div className="space-y-6">
@@ -58,12 +61,12 @@ export const BusinessInfoStep = () => {
             type="text"
             value={businessInfo.businessName}
             onChange={(e) => handleChange('businessName', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.businessName ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.businessName ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Your Business Name"
           />
-          {errors.businessName && <p className="text-red-500 text-sm mt-1">{errors.businessName}</p>}
+          {showValidationErrors && errors.businessName && <p className="text-red-500 text-sm mt-1">{errors.businessName}</p>}
         </div>
 
         <div>
@@ -75,12 +78,12 @@ export const BusinessInfoStep = () => {
             type="tel"
             value={businessInfo.businessPhone}
             onChange={(e) => handleChange('businessPhone', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.businessPhone ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.businessPhone ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Business phone number"
           />
-          {errors.businessPhone && <p className="text-red-500 text-sm mt-1">{errors.businessPhone}</p>}
+          {showValidationErrors && errors.businessPhone && <p className="text-red-500 text-sm mt-1">{errors.businessPhone}</p>}
         </div>
 
         <div>
@@ -92,12 +95,12 @@ export const BusinessInfoStep = () => {
             type="email"
             value={businessInfo.businessEmail}
             onChange={(e) => handleChange('businessEmail', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.businessEmail ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.businessEmail ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
             placeholder="Business email address"
           />
-          {errors.businessEmail && <p className="text-red-500 text-sm mt-1">{errors.businessEmail}</p>}
+          {showValidationErrors && errors.businessEmail && <p className="text-red-500 text-sm mt-1">{errors.businessEmail}</p>}
         </div>
 
         <div>
@@ -105,9 +108,9 @@ export const BusinessInfoStep = () => {
             <Upload className="inline w-4 h-4 mr-2" />
             Business Logo (Optional)
           </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-            <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-sm text-gray-600">Upload your business logo</p>
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 cursor-pointer group">
+            <Building2 className="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
+            <p className="mt-2 text-sm text-gray-600 group-hover:text-blue-700">Upload your business logo</p>
             <p className="text-xs text-gray-500">PNG, JPG, SVG up to 5MB</p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Edit, Trash2, Search, Filter, Package, Wrench, Clock, Percent } from 'lucide-react';
 
 export const PriceBook = () => {

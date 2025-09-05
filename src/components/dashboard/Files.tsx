@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Upload, Download, Eye, Trash2, Search, Filter, FileText, Image, Shield, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
 export const Files = () => {

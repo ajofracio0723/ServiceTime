@@ -1,4 +1,3 @@
-import React from 'react';
 import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 
 const revenueData = {

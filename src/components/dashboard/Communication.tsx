@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Send, Mail, MessageSquare, Phone, Search, Filter, Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 export const Communication = () => {

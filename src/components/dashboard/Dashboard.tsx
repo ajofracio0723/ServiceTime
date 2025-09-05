@@ -1,12 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { JobsOverview } from "./JobsOverview";
+import { JobsOverview } from "./job/JobsOverview";
 import { RevenueWidget } from "./RevenueWidget";
 import { QuickActions } from "./QuickActions";
-import { Client } from "./Client";
-import { Property } from "./Property";
-import { Estimate } from "./Estimate";
-import { Job } from "./Job";
+import Client from './client/Client';
+import { Property } from "./property/Property";
+import { Estimate } from "./estimate/Estimate";
+import { Job } from "./job/Job";
 import { Visit } from "./Visit";
 import { Invoice } from "./Invoice";
 import { Payment } from "./Payment";

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from "react";
+import { createContext, useContext, useReducer, ReactNode } from "react";
 
 interface User {
   id: string;
@@ -54,7 +54,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 const AuthContext = createContext<{
   state: AuthState;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string) => Promise<void>;
   signup: () => Promise<void>;
   logout: () => void;
 } | null>(null);
@@ -62,14 +62,15 @@ const AuthContext = createContext<{
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string) => {
     dispatch({ type: "LOGIN_START" });
 
     try {
-      // Simulate API call - for prototype, accept any credentials
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Simulate passwordless login - send magic link via email
+      // In a real implementation, this would send an email with a secure login link
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Longer delay to simulate email sending
 
-      // Mock successful login - always succeeds for prototype
+      // Mock successful passwordless login - always succeeds for prototype
       const user: User = {
         id: "1",
         email,

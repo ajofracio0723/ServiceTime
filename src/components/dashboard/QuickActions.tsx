@@ -1,4 +1,3 @@
-import React from 'react';
 import { Plus, Calendar, Users, FileText, Phone, Settings } from 'lucide-react';
 
 export const QuickActions = () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Wrench, Users } from 'lucide-react';
 import { useOnboarding } from '../../../context/OnboardingContext';
 import { validateBusinessCategory } from '../../../utils/validation';
@@ -28,6 +28,7 @@ const technicianOptions = [
 export const BusinessCategoryStep = () => {
   const { state, dispatch } = useOnboarding();
   const { businessCategory } = state.data;
+  const { showValidationErrors } = state;
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,8 +71,10 @@ export const BusinessCategoryStep = () => {
   };
 
   useEffect(() => {
-    validateStep();
-  }, [businessCategory]);
+    if (showValidationErrors) {
+      validateStep();
+    }
+  }, [businessCategory, showValidationErrors]);
 
   return (
     <div className="space-y-6">
@@ -89,8 +92,8 @@ export const BusinessCategoryStep = () => {
           <select
             value={businessCategory.serviceType}
             onChange={(e) => handleServiceTypeChange(e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.serviceType ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.serviceType ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
           >
             {serviceTypes.map((type) => (
@@ -99,7 +102,7 @@ export const BusinessCategoryStep = () => {
               </option>
             ))}
           </select>
-          {errors.serviceType && <p className="text-red-500 text-sm mt-1">{errors.serviceType}</p>}
+          {showValidationErrors && errors.serviceType && <p className="text-red-500 text-sm mt-1">{errors.serviceType}</p>}
         </div>
 
         <div>
@@ -110,8 +113,8 @@ export const BusinessCategoryStep = () => {
           <select
             value={businessCategory.technicianCount}
             onChange={(e) => handleTechnicianCountChange(Number(e.target.value))}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.technicianCount ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
+              showValidationErrors && errors.technicianCount ? 'border-red-400 bg-red-50' : 'border-gray-200'
             }`}
           >
             {technicianOptions.map((option) => (
@@ -120,7 +123,7 @@ export const BusinessCategoryStep = () => {
               </option>
             ))}
           </select>
-          {errors.technicianCount && <p className="text-red-500 text-sm mt-1">{errors.technicianCount}</p>}
+          {showValidationErrors && errors.technicianCount && <p className="text-red-500 text-sm mt-1">{errors.technicianCount}</p>}
         </div>
       </div>
     </div>

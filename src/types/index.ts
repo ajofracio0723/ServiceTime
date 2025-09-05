@@ -24,6 +24,7 @@ export interface Plan {
   price: number;
   features: string[];
   recommended?: boolean;
+  customPricing?: boolean;
 }
 
 export interface OnboardingData {

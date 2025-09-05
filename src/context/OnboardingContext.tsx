@@ -5,6 +5,7 @@ interface OnboardingState {
   currentStep: number;
   data: OnboardingData;
   isComplete: boolean;
+  showValidationErrors: boolean;
 }
 
 type OnboardingAction =
@@ -13,6 +14,7 @@ type OnboardingAction =
   | { type: 'SET_BUSINESS_INFO'; payload: BusinessInfo }
   | { type: 'SET_BUSINESS_CATEGORY'; payload: BusinessCategory }
   | { type: 'SET_SELECTED_PLAN'; payload: Plan }
+  | { type: 'TRIGGER_VALIDATION' }
   | { type: 'COMPLETE_ONBOARDING' }
   | { type: 'RESET' };
 
@@ -37,12 +39,13 @@ const initialState: OnboardingState = {
     selectedPlan: null,
   },
   isComplete: false,
+  showValidationErrors: false,
 };
 
 const onboardingReducer = (state: OnboardingState, action: OnboardingAction): OnboardingState => {
   switch (action.type) {
     case 'SET_STEP':
-      return { ...state, currentStep: action.payload };
+      return { ...state, currentStep: action.payload, showValidationErrors: false };
     case 'SET_PERSONAL_INFO':
       return {
         ...state,
@@ -63,6 +66,8 @@ const onboardingReducer = (state: OnboardingState, action: OnboardingAction): On
         ...state,
         data: { ...state.data, selectedPlan: action.payload },
       };
+    case 'TRIGGER_VALIDATION':
+      return { ...state, showValidationErrors: true };
     case 'COMPLETE_ONBOARDING':
       return { ...state, isComplete: true };
     case 'RESET':

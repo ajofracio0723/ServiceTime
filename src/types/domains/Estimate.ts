@@ -1,12 +1,15 @@
 export interface EstimateItem {
   id: string;
-  type: 'service' | 'part' | 'labor';
-  itemId: string; // References service, part, or labor rate
+  type: 'service' | 'part' | 'labor' | 'material' | 'equipment';
+  itemId?: string; // References service, part, or labor rate
   name: string;
   description?: string;
+  category?: string;
   quantity: number;
   unitPrice: number;
   discount?: number;
+  discountType?: 'percentage' | 'fixed';
+  taxable: boolean;
   total: number;
 }
 
@@ -32,7 +35,28 @@ export interface ClientApproval {
   notes?: string;
 }
 
-export type EstimateStatus = 'draft' | 'sent' | 'viewed' | 'approved' | 'rejected' | 'expired' | 'converted';
+export type EstimateStatus = 'draft' | 'sent' | 'viewed' | 'approved' | 'rejected' | 'expired' | 'converted' | 'cancelled';
+
+export interface EstimateTax {
+  name: string;
+  rate: number;
+  amount: number;
+}
+
+export interface EstimateDiscount {
+  type: 'percentage' | 'fixed';
+  value: number;
+  reason?: string;
+}
+
+export interface EstimateTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  items: Omit<EstimateItem, 'id' | 'total'>[];
+  defaultTerms: EstimateTerms;
+}
 
 export interface Estimate {
   id: string;
@@ -43,16 +67,27 @@ export interface Estimate {
   description: string;
   items: EstimateItem[];
   subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
+  taxes: EstimateTax[];
+  totalTaxAmount: number;
+  discounts: EstimateDiscount[];
+  totalDiscountAmount: number;
   total: number;
   terms: EstimateTerms;
   depositRequirement: DepositRequirement;
   clientApproval: ClientApproval;
   status: EstimateStatus;
+  templateId?: string;
+  notes?: string;
+  internalNotes?: string;
+  attachments: string[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
   sentAt?: string;
   viewedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  expiredAt?: string;
+  convertedToJobAt?: string;
+  jobId?: string;
 }
