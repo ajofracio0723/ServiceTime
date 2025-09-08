@@ -14,7 +14,6 @@ import {
   Send,
   Eye,
   TrendingUp,
-  Copy,
   Archive
 } from 'lucide-react';
 import { EstimateForm } from './EstimateForm';
@@ -255,20 +254,6 @@ export const Estimate = () => {
     setSelectedEstimate(null);
   };
 
-  const handleDuplicateEstimate = (estimate: EstimateType) => {
-    const duplicated: EstimateType = {
-      ...estimate,
-      id: `est-${Date.now()}`,
-      estimateNumber: `EST-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      sentAt: undefined,
-      viewedAt: undefined,
-      clientApproval: { isApproved: false }
-    };
-    setEstimates(prev => [duplicated, ...prev]);
-  };
 
   const handleViewEstimate = (estimate: EstimateType) => {
     setSelectedEstimate(estimate);
@@ -408,13 +393,6 @@ export const Estimate = () => {
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button 
-                    onClick={() => handleDuplicateEstimate(estimate)}
-                    className="text-green-600 hover:text-green-900"
-                    title="Duplicate Estimate"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
 
@@ -496,12 +474,6 @@ export const Estimate = () => {
                       className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                     >
                       Edit Estimate
-                    </button>
-                    <button 
-                      onClick={() => handleDuplicateEstimate(estimate)}
-                      className="text-green-600 hover:text-green-900 text-sm font-medium"
-                    >
-                      Duplicate
                     </button>
                   </div>
                   <div className="flex items-center space-x-2">

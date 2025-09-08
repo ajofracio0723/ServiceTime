@@ -720,7 +720,6 @@ export const PropertyForm = ({
                   <option value="Weekends Only">Weekends Only</option>
                   <option value="Business Hours">Business Hours</option>
                   <option value="After Hours">After Hours</option>
-                  <option value="By Appointment">By Appointment</option>
                   <option value="Anytime">Anytime</option>
                 </select>
               </div>
