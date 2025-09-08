@@ -15,7 +15,6 @@ export interface MapPin {
 
 export interface AccessNotes {
   gateCode?: string;
-  keyLocation?: string;
   specialInstructions: string;
   emergencyContact?: {
     name: string;
