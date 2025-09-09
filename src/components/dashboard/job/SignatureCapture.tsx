@@ -218,7 +218,6 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
     switch (type) {
       case 'client': return 'bg-blue-100 text-blue-800';
       case 'technician': return 'bg-green-100 text-green-800';
-      case 'supervisor': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -227,7 +226,6 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
     switch (type) {
       case 'client': return 'Client';
       case 'technician': return 'Technician';
-      case 'supervisor': return 'Supervisor';
       default: return 'Unknown';
     }
   };
@@ -251,14 +249,6 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
         >
           <PenTool className="w-4 h-4" />
           <span>Technician Signature</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleAddSignature('supervisor')}
-          className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
-        >
-          <PenTool className="w-4 h-4" />
-          <span>Supervisor Signature</span>
         </button>
       </div>
 

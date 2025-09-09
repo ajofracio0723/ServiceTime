@@ -8,11 +8,12 @@ import {
   FileText, 
   CheckSquare,
   Camera,
+  PenTool,
   AlertTriangle,
   Save,
   Users
 } from 'lucide-react';
-import { Job, JobFormData, ChecklistItem, ScheduledVisit, AssignedTechnician, JobScope } from './types';
+import { Job, JobFormData, ChecklistItem, ScheduledVisit, AssignedTechnician, JobScope, JobPhoto } from './types';
 import { validateJob, getFieldError, ValidationError } from '../../../utils/jobValidation';
 import { PhotoManager } from './PhotoManager';
 import { SignatureCapture } from './SignatureCapture';
@@ -309,7 +310,8 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
     { id: 'team', label: 'Team', icon: Users },
     { id: 'checklist', label: 'Checklist', icon: CheckSquare },
     { id: 'sla', label: 'SLA', icon: Clock },
-    { id: 'media', label: 'Media', icon: Camera }
+    { id: 'photos', label: 'Photos', icon: Camera },
+    { id: 'signatures', label: 'Signatures', icon: PenTool }
   ];
 
   return (
@@ -927,17 +929,22 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
               </div>
             )}
 
-            {/* Media Tab */}
-            {activeTab === 'media' && (
+            {/* Photos Tab */}
+            {activeTab === 'photos' && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Photos & Documentation</h3>
                   <PhotoManager
                     photos={formData.photos}
-                    onPhotosChange={(photos) => setFormData(prev => ({ ...prev, photos }))}
+                    onPhotosChange={(photos: JobPhoto[]) => setFormData(prev => ({ ...prev, photos }))}
                   />
                 </div>
+              </div>
+            )}
 
+            {/* Signatures Tab */}
+            {activeTab === 'signatures' && (
+              <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Digital Signatures</h3>
                   <SignatureCapture

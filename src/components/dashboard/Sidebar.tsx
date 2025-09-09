@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Home, 
   Calendar, 
@@ -15,7 +15,10 @@ import {
   ChevronDown,
   ChevronRight,
   Package,
-  MessageSquare
+  MessageSquare,
+  List,
+  Route,
+  Navigation
 } from 'lucide-react';
 import { useOnboarding } from '../../context/OnboardingContext';
 
@@ -28,9 +31,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSectio
   const { state } = useOnboarding();
   const { personalInfo, businessInfo } = state.data;
   const [settingsExpanded, setSettingsExpanded] = useState(activeSection.startsWith('settings'));
+  const [visitsExpanded, setVisitsExpanded] = useState(activeSection.startsWith('visits'));
 
   useEffect(() => {
     setSettingsExpanded(activeSection.startsWith('settings'));
+    setVisitsExpanded(activeSection.startsWith('visits'));
   }, [activeSection]);
 
   const menuItems = [
@@ -39,10 +44,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSectio
     { id: 'properties', label: 'Properties', icon: PropertyIcon },
     { id: 'estimates', label: 'Estimates', icon: FileText },
     { id: 'jobs', label: 'Jobs / Work Orders', icon: Calendar },
-    { id: 'visits', label: 'Visits (Slots)', icon: MapPin },
     { id: 'invoices', label: 'Invoices', icon: Receipt },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'files', label: 'Files', icon: FolderOpen },
+  ];
+
+  const visitsSubItems = [
+    { id: 'visits-calendar', label: 'Calendar View', icon: Calendar },
+    { id: 'visits-list', label: 'List View', icon: List },
+    { id: 'visits-routes', label: 'Routes', icon: Route },
+    { id: 'visits-gps', label: 'GPS Tracking', icon: Navigation },
   ];
 
   const settingsSubItems = [
@@ -75,19 +86,74 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSectio
             const isActive = activeSection === item.id;
             
             return (
-              <li key={item.id}>
-                <button
-                  onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              </li>
+              <React.Fragment key={item.id}>
+                <li>
+                  <button
+                    onClick={() => setActiveSection(item.id)}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      isActive
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                </li>
+                
+                {/* Insert Visits dropdown after Jobs */}
+                {item.id === 'jobs' && (
+                  <li>
+                    <button
+                      onClick={() => {
+                        setVisitsExpanded(!visitsExpanded);
+                        if (!visitsExpanded) {
+                          setActiveSection('visits-calendar'); // Default to calendar view
+                        }
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        activeSection.startsWith('visits')
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <MapPin className="w-5 h-5" />
+                      <span className="font-medium flex-1">Visits (Slots)</span>
+                      {visitsExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                    </button>
+                    
+                    {/* Visits Dropdown */}
+                    {visitsExpanded && (
+                      <ul className="mt-2 ml-6 space-y-1">
+                        {visitsSubItems.map((subItem) => {
+                          const SubIcon = subItem.icon;
+                          const isSubActive = activeSection === subItem.id;
+                          
+                          return (
+                            <li key={subItem.id}>
+                              <button
+                                onClick={() => setActiveSection(subItem.id)}
+                                className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left transition-colors text-sm ${
+                                  isSubActive
+                                    ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-600'
+                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                                }`}
+                              >
+                                <SubIcon className="w-4 h-4" />
+                                <span className="font-medium">{subItem.label}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                )}
+              </React.Fragment>
             );
           })}
           

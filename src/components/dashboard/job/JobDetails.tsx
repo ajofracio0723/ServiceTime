@@ -10,6 +10,7 @@ import {
   FileText, 
   CheckSquare, 
   Camera, 
+  PenTool,
   AlertTriangle,
   Edit,
   CheckCircle,
@@ -92,7 +93,8 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
     { id: 'team', label: 'Team', icon: Users },
     { id: 'checklist', label: 'Checklist', icon: CheckSquare },
     { id: 'visits', label: 'Visits', icon: Calendar },
-    { id: 'media', label: 'Media', icon: Camera }
+    { id: 'photos', label: 'Photos', icon: Camera },
+    { id: 'signatures', label: 'Signatures', icon: PenTool }
   ];
 
   return (
@@ -164,108 +166,155 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
             {/* Overview Section */}
             {activeSection === 'overview' && (
               <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">Job Information</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center text-sm">
-                          <User className="w-4 h-4 mr-3 text-gray-400" />
-                          <span className="font-medium text-gray-700 w-20">Client:</span>
-                          <span className="text-gray-900">{job.clientName}</span>
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <MapPin className="w-4 h-4 mr-3 text-gray-400" />
-                          <span className="font-medium text-gray-700 w-20">Location:</span>
-                          <span className="text-gray-900">{job.propertyAddress}</span>
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <Clock className="w-4 h-4 mr-3 text-gray-400" />
-                          <span className="font-medium text-gray-700 w-20">Duration:</span>
-                          <span className="text-gray-900">{job.estimatedDuration}</span>
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <DollarSign className="w-4 h-4 mr-3 text-gray-400" />
-                          <span className="font-medium text-gray-700 w-20">Cost:</span>
-                          <span className="text-gray-900">${job.estimatedCost}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">Progress Summary</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Tasks Completed</span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {getCompletedTasksCount()}/{job.checklist?.length || 0}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Visits Completed</span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {getCompletedVisitsCount()}/{job.scheduledVisits?.length || 0}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Photos Captured</span>
-                          <span className="text-sm font-medium text-gray-900">{job.photos?.length || 0}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Signatures</span>
-                          <span className="text-sm font-medium text-gray-900">{job.signatures?.length || 0}</span>
-                        </div>
-                      </div>
-                    </div>
+                {/* Job Information Table */}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Job Information</h3>
                   </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">SLA Information</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Response Time</span>
-                          <span className="text-sm font-medium text-gray-900">{job.sla.responseTime} hours</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Completion Time</span>
-                          <span className="text-sm font-medium text-gray-900">{job.sla.completionTime} hours</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">Timestamps</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Created</span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {new Date(job.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Last Updated</span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {new Date(job.updatedAt).toLocaleString()}
-                          </span>
-                        </div>
-                        {job.completedAt && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">Completed</span>
-                            <span className="text-sm font-medium text-gray-900">
-                              {new Date(job.completedAt).toLocaleString()}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700 w-1/4">
+                            <div className="flex items-center">
+                              <User className="w-4 h-4 mr-2 text-gray-400" />
+                              Client
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.clientName}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                            <div className="flex items-center">
+                              <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                              Location
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.propertyAddress}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                            <div className="flex items-center">
+                              <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                              Duration
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.estimatedDuration}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                            <div className="flex items-center">
+                              <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
+                              Estimated Cost
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${job.estimatedCost}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Category</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span className="inline-flex items-center">
+                              <span className="mr-2">{getCategoryIcon(job.category)}</span>
+                              {job.category}
                             </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Priority</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(job.priority)}`}>
+                              {job.priority}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
+                {/* Progress Summary Table */}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Progress Summary</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700 w-1/2">Tasks Completed</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                            {getCompletedTasksCount()}/{job.checklist?.length || 0}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Visits Completed</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                            {getCompletedVisitsCount()}/{job.scheduledVisits?.length || 0}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Photos Captured</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{job.photos?.length || 0}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Digital Signatures</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{job.signatures?.length || 0}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* SLA & Timestamps Table */}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">SLA & Timeline Information</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700 w-1/2">Response Time SLA</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.sla.responseTime} hours</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Completion Time SLA</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.sla.completionTime} hours</td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Created</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(job.createdAt).toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Last Updated</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(job.updatedAt).toLocaleString()}
+                          </td>
+                        </tr>
+                        {job.completedAt && (
+                          <tr>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">Completed</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {new Date(job.completedAt).toLocaleString()}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Description */}
                 {job.description && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">Description</h3>
-                    <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{job.description}</p>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                      <h3 className="text-lg font-medium text-gray-900">Description</h3>
+                    </div>
+                    <div className="px-6 py-4">
+                      <p className="text-gray-700">{job.description}</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -324,29 +373,43 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
             {/* Team Section */}
             {activeSection === 'team' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium text-gray-900">Assigned Team</h3>
-                <div className="grid gap-4">
-                  {job.assignedTechnicians?.map((tech) => (
-                    <div key={tech.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{tech.name}</h4>
-                        {tech.isPrimary && (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Primary
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{tech.role}</p>
-                      <div className="space-y-1">
-                        {tech.phone && (
-                          <p className="text-sm text-gray-600">📞 {tech.phone}</p>
-                        )}
-                        {tech.email && (
-                          <p className="text-sm text-gray-600">✉️ {tech.email}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Assigned Team</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {job.assignedTechnicians?.map((tech) => (
+                          <tr key={tech.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tech.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{tech.role}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              <div className="space-y-1">
+                                {tech.phone && <div>📞 {tech.phone}</div>}
+                                {tech.email && <div>✉️ {tech.email}</div>}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {tech.isPrimary && (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                  Primary
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -354,37 +417,60 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
             {/* Checklist Section */}
             {activeSection === 'checklist' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900">Task Checklist</h3>
-                  <span className="text-sm text-gray-600">
-                    {getCompletedTasksCount()}/{job.checklist?.length || 0} completed
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {job.checklist?.map((item) => (
-                    <div key={item.id} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg">
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 ${
-                        item.completed 
-                          ? 'bg-green-500 border-green-500' 
-                          : 'border-gray-300'
-                      }`}>
-                        {item.completed && <CheckCircle className="w-3 h-3 text-white" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className={`text-sm ${item.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                          {item.task}
-                        </p>
-                        {item.notes && (
-                          <p className="text-xs text-gray-600 mt-1">{item.notes}</p>
-                        )}
-                        {item.completed && item.completedBy && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Completed by {item.completedBy} on {new Date(item.completedAt!).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-900">Task Checklist</h3>
+                      <span className="text-sm text-gray-600">
+                        {getCompletedTasksCount()}/{job.checklist?.length || 0} completed
+                      </span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {job.checklist?.map((item) => (
+                          <tr key={item.id} className={item.completed ? 'bg-green-50' : ''}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                item.completed 
+                                  ? 'bg-green-500 border-green-500' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {item.completed && <CheckCircle className="w-3 h-3 text-white" />}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900">
+                              <span className={item.completed ? 'line-through text-gray-500' : ''}>
+                                {item.task}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {item.notes || '-'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {item.completed && item.completedBy ? (
+                                <div>
+                                  <div>{item.completedBy}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(item.completedAt!).toLocaleString()}
+                                  </div>
+                                </div>
+                              ) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -392,53 +478,60 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
             {/* Visits Section */}
             {activeSection === 'visits' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium text-gray-900">Scheduled Visits</h3>
-                <div className="space-y-4">
-                  {job.scheduledVisits?.map((visit, index) => (
-                    <div key={visit.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium text-gray-900">Visit {index + 1}</h4>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          visit.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          visit.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          visit.status === 'rescheduled' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {visit.status}
-                        </span>
-                      </div>
-                      <div className="grid md:grid-cols-3 gap-3 mb-3">
-                        <div>
-                          <span className="text-xs font-medium text-gray-700">Date</span>
-                          <p className="text-sm text-gray-900">{visit.date}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-700">Time</span>
-                          <p className="text-sm text-gray-900">{visit.time}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-700">Duration</span>
-                          <p className="text-sm text-gray-900">{visit.duration}</p>
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <span className="text-xs font-medium text-gray-700">Purpose</span>
-                        <p className="text-sm text-gray-900">{visit.purpose}</p>
-                      </div>
-                      {visit.notes && (
-                        <div>
-                          <span className="text-xs font-medium text-gray-700">Notes</span>
-                          <p className="text-sm text-gray-600">{visit.notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Scheduled Visits</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit #</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {job.scheduledVisits?.map((visit, index) => (
+                          <tr key={visit.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              Visit {index + 1}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div>
+                                <div>{visit.date}</div>
+                                <div className="text-xs text-gray-500">{visit.time}</div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{visit.duration}</td>
+                            <td className="px-6 py-4 text-sm text-gray-900">{visit.purpose}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                visit.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                visit.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                visit.status === 'rescheduled' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {visit.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {visit.notes || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Media Section */}
-            {activeSection === 'media' && (
+            {/* Photos Section */}
+            {activeSection === 'photos' && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-3">Photos ({job.photos?.length || 0})</h3>
@@ -475,7 +568,12 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
                     <p className="text-gray-500 text-center py-8">No photos uploaded yet</p>
                   )}
                 </div>
+              </div>
+            )}
 
+            {/* Signatures Section */}
+            {activeSection === 'signatures' && (
+              <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-3">Digital Signatures ({job.signatures?.length || 0})</h3>
                   {job.signatures && job.signatures.length > 0 ? (

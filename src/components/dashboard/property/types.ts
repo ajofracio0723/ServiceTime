@@ -24,18 +24,36 @@ export interface AccessNotes {
   parkingInstructions?: string;
 }
 
+export interface ServiceRecord {
+  id: string;
+  jobId?: string;
+  date: string;
+  type: 'maintenance' | 'repair' | 'inspection' | 'installation' | 'replacement';
+  description: string;
+  technicianId?: string;
+  technicianName?: string;
+  cost?: number;
+  partsUsed?: string[];
+  notes?: string;
+  nextServiceRecommended?: string;
+}
+
 export interface Equipment {
   id: string;
-  name: string;
+  name: string; // e.g., "Daikin Split-Type AC", "Generator", "Router"
+  type?: string; // Additional type classification
   category: 'hvac' | 'plumbing' | 'electrical' | 'security' | 'appliance' | 'landscaping' | 'other';
   brand?: string;
   model?: string;
   serialNumber?: string;
   installDate?: string;
   warrantyExpiry?: string;
+  locationAtProperty?: string; // e.g., "Roof", "Server Room", "Basement"
+  status: 'active' | 'inactive' | 'under_repair' | 'replaced';
   lastServiceDate?: string;
   nextServiceDue?: string;
   serviceInterval?: number; // days between services
+  serviceHistory: ServiceRecord[];
   notes?: string;
 }
 

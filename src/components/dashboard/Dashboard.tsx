@@ -7,7 +7,7 @@ import Client from './client/Client';
 import { Property } from "./property/Property";
 import { Estimate } from "./estimate/Estimate";
 import { Job } from "./job/Job";
-import { Visit } from "./Visit";
+import { VisitWithViewMode } from "./visit/VisitWithViewMode.tsx";
 import { Invoice } from "./Invoice";
 import { Payment } from "./Payment";
 import { Files } from "./Files";
@@ -117,7 +117,11 @@ export const Dashboard = () => {
         return <Job />;
 
       case "visits":
-        return <Visit />;
+      case "visits-calendar":
+      case "visits-list":
+      case "visits-routes":
+      case "visits-gps":
+        return <VisitWithViewMode activeSection={activeSection} />;
 
       case "estimates":
         return <Estimate />;

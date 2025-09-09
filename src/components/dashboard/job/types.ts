@@ -39,7 +39,7 @@ export interface JobPhoto {
 
 export interface JobSignature {
   id: string;
-  type: 'client' | 'technician' | 'supervisor';
+  type: 'client' | 'technician';
   signatureData: string; // Base64 encoded signature
   signerName: string;
   signerTitle?: string;

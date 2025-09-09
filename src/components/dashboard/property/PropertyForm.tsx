@@ -52,13 +52,19 @@ export const PropertyForm = ({
 
   const [newEquipment, setNewEquipment] = useState({
     name: '',
+    type: '',
     category: 'other' as 'hvac' | 'plumbing' | 'electrical' | 'security' | 'appliance' | 'landscaping' | 'other',
     brand: '',
     model: '',
     serialNumber: '',
+    installDate: '',
+    warrantyExpiry: '',
+    locationAtProperty: '',
+    status: 'active' as 'active' | 'inactive' | 'under_repair' | 'replaced',
     lastServiceDate: '',
     nextServiceDue: '',
     serviceInterval: 365,
+    serviceHistory: [],
     notes: '',
   });
 
@@ -128,8 +134,6 @@ export const PropertyForm = ({
         id: Date.now().toString(),
         ...newEquipment,
         nextServiceDue,
-        installDate: '',
-        warrantyExpiry: '',
       };
       setFormData(prev => ({
         ...prev,
@@ -137,13 +141,19 @@ export const PropertyForm = ({
       }));
       setNewEquipment({
         name: '',
+        type: '',
         category: 'other' as 'hvac' | 'plumbing' | 'electrical' | 'security' | 'appliance' | 'landscaping' | 'other',
         brand: '',
         model: '',
         serialNumber: '',
+        installDate: '',
+        warrantyExpiry: '',
+        locationAtProperty: '',
+        status: 'active' as 'active' | 'inactive' | 'under_repair' | 'replaced',
         lastServiceDate: '',
         nextServiceDue: '',
         serviceInterval: 365,
+        serviceHistory: [],
         notes: '',
       });
     }
@@ -849,17 +859,83 @@ export const PropertyForm = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Brand/Model</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
                   <input
                     type="text"
-                    placeholder="e.g., Carrier 24ABC6"
-                    value={`${newEquipment.brand} ${newEquipment.model}`.trim()}
-                    onChange={(e) => {
-                      const parts = e.target.value.split(' ');
-                      const brand = parts[0] || '';
-                      const model = parts.slice(1).join(' ') || '';
-                      setNewEquipment(prev => ({ ...prev, brand, model }));
-                    }}
+                    placeholder="e.g., Split-Type AC, Standby Generator"
+                    value={newEquipment.type}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Daikin, Carrier, Generac"
+                    value={newEquipment.brand}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, brand: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Model</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., 24ABC6, RXT-070"
+                    value={newEquipment.model}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, model: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Serial Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., SN123456789"
+                    value={newEquipment.serialNumber}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, serialNumber: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Location at Property</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Roof, Server Room, Basement"
+                    value={newEquipment.locationAtProperty}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, locationAtProperty: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                  <select
+                    value={newEquipment.status}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="under_repair">Under Repair</option>
+                    <option value="replaced">Replaced</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Install Date</label>
+                  <input
+                    type="date"
+                    value={newEquipment.installDate}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, installDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Warranty Expiry</label>
+                  <input
+                    type="date"
+                    value={newEquipment.warrantyExpiry}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, warrantyExpiry: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -882,6 +958,28 @@ export const PropertyForm = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Service Interval (Days)</label>
+                  <input
+                    type="number"
+                    placeholder="365"
+                    value={newEquipment.serviceInterval}
+                    onChange={(e) => setNewEquipment(prev => ({ ...prev, serviceInterval: parseInt(e.target.value) || 365 }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div className="mt-4">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                <textarea
+                  placeholder="Additional notes about this equipment..."
+                  value={newEquipment.notes}
+                  onChange={(e) => setNewEquipment(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
               <div className="flex justify-end">
                 <button
@@ -915,13 +1013,41 @@ export const PropertyForm = ({
                             </span>
                           </div>
                           <div className="font-medium text-lg">{equipment.name}</div>
+                          {equipment.type && (
+                            <div className="text-sm text-blue-600 font-medium">{equipment.type}</div>
+                          )}
                           <div className="text-sm text-gray-600 mb-2">
                             {equipment.brand && equipment.model 
                               ? `${equipment.brand} ${equipment.model}`
                               : equipment.brand || equipment.model || 'No brand/model specified'
                             }
                             {equipment.serialNumber && ` • SN: ${equipment.serialNumber}`}
+                            {equipment.locationAtProperty && (
+                              <div className="mt-1">
+                                <span className="inline-flex items-center text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                  📍 {equipment.locationAtProperty}
+                                </span>
+                              </div>
+                            )}
                           </div>
+                          
+                          {/* Equipment Status Badge */}
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              equipment.status === 'active' ? 'bg-green-100 text-green-800' :
+                              equipment.status === 'inactive' ? 'bg-gray-100 text-gray-700' :
+                              equipment.status === 'under_repair' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {equipment.status === 'active' ? '✅ Active' :
+                               equipment.status === 'inactive' ? '⏸️ Inactive' :
+                               equipment.status === 'under_repair' ? '🔧 Under Repair' :
+                               '🔄 Replaced'}
+                            </span>
+                          </div>
+
+
+                          {/* Service Information */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                             {equipment.installDate && (
                               <div>
@@ -944,6 +1070,24 @@ export const PropertyForm = ({
                               </div>
                             )}
                           </div>
+
+                          {/* Service History */}
+                          {equipment.serviceHistory && equipment.serviceHistory.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-xs font-medium text-gray-700 mb-1">Recent Service History:</div>
+                              <div className="space-y-1">
+                                {equipment.serviceHistory.slice(-2).map((service, index) => (
+                                  <div key={index} className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                                    <div className="flex justify-between">
+                                      <span className="font-medium">{service.type}</span>
+                                      <span>{new Date(service.date).toLocaleDateString()}</span>
+                                    </div>
+                                    <div>{service.description}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           {equipment.notes && (
                             <div className="mt-2 text-sm text-gray-600">
                               <span className="font-medium">Notes:</span> {equipment.notes}
