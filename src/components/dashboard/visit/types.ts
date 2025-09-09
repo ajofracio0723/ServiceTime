@@ -19,6 +19,7 @@ export interface Visit {
   contactEmail: string;
   createdAt: string;
   updatedAt: string;
+  jobId?: string;
   progress?: VisitProgress;
   route?: RouteInfo;
   timeline?: StatusTimeline;

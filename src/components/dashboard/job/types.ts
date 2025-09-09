@@ -103,7 +103,6 @@ export interface Job {
   sla: SLA;
   
   // Documentation
-  photos: JobPhoto[];
   signatures: JobSignature[];
   
   // Metadata

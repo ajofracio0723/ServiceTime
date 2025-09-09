@@ -13,10 +13,10 @@ import {
   Save,
   Users
 } from 'lucide-react';
-import { Job, JobFormData, ChecklistItem, ScheduledVisit, AssignedTechnician, JobScope, JobPhoto } from './types';
+import { Job, JobFormData, ChecklistItem, ScheduledVisit, AssignedTechnician, JobScope } from './types';
 import { validateJob, getFieldError, ValidationError } from '../../../utils/jobValidation';
-import { PhotoManager } from './PhotoManager';
 import { SignatureCapture } from './SignatureCapture';
+import { JobPhotosFromVisits } from './JobPhotosFromVisits';
 
 interface JobFormProps {
   isOpen: boolean;
@@ -64,7 +64,6 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
       completionTime: 72,
       escalationContacts: []
     },
-    photos: [],
     signatures: [],
     internalNotes: '',
     clientNotes: ''
@@ -95,7 +94,6 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
         assignedTechnicians: editingJob.assignedTechnicians,
         checklist: editingJob.checklist,
         sla: editingJob.sla,
-        photos: editingJob.photos,
         signatures: editingJob.signatures,
         internalNotes: editingJob.internalNotes || '',
         clientNotes: editingJob.clientNotes || ''
@@ -136,8 +134,7 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
           completionTime: 72,
           escalationContacts: []
         },
-        photos: [],
-        signatures: [],
+          signatures: [],
         internalNotes: '',
         clientNotes: ''
       });
@@ -933,11 +930,16 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
             {activeTab === 'photos' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Photos & Documentation</h3>
-                  <PhotoManager
-                    photos={formData.photos}
-                    onPhotosChange={(photos: JobPhoto[]) => setFormData(prev => ({ ...prev, photos }))}
-                  />
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Photos from Visits</h3>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <Camera className="w-5 h-5 text-blue-600" />
+                      <p className="text-blue-800 font-medium">Photos are managed through Visit Progress</p>
+                    </div>
+                    <p className="text-blue-600 text-sm mt-2">
+                      All photos for this job are captured by technicians during visits and will be displayed here automatically.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

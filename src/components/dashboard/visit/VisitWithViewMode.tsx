@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, 
   Plus, 
@@ -18,7 +18,8 @@ import {
   LocationCoordinates 
 } from './types';
 import { mockVisits, getStatusColor, getTypeColor, getPriorityColor, filterVisits } from './visitUtils';
-import { addMinutesToTime, formatTime } from './calendarUtils';
+import { formatTime } from './calendarUtils';
+import { visitStorage } from '../../../utils/visitStorage';
 import { VisitForm } from './VisitForm';
 import { CalendarView as CalendarViewComponent } from './CalendarView';
 import { VisitProgressModal } from './VisitProgressModal';
@@ -31,7 +32,7 @@ interface VisitWithViewModeProps {
 }
 
 export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSection }) => {
-  const [visits, setVisits] = useState<VisitType[]>(mockVisits);
+  const [visits, setVisits] = useState<VisitType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<VisitStatus>('all');
   const [filterType, setFilterType] = useState<VisitTypeEnum>('all');
@@ -63,6 +64,19 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
   const [selectedVisit, setSelectedVisit] = useState<VisitType | undefined>();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+
+  // Load visits from localStorage on component mount
+  useEffect(() => {
+    const loadVisits = () => {
+      // Initialize with mock data if localStorage is empty
+      visitStorage.initializeWithMockData(mockVisits);
+      // Load all visits from storage
+      const storedVisits = visitStorage.getAll();
+      setVisits(storedVisits);
+    };
+    
+    loadVisits();
+  }, []);
 
   // Route management handlers
   const handleOptimizeRoute = async (technicianId: string, date: string): Promise<RouteOptimization> => {
@@ -138,35 +152,27 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
   });
 
   const handleCreateVisit = (visitData: VisitFormData) => {
-    const newVisit: VisitType = {
-      id: Date.now().toString(),
-      ...visitData,
-      endTime: addMinutesToTime(visitData.scheduledTime, visitData.estimatedDuration),
-      status: 'scheduled',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const newVisit = visitStorage.create(visitData);
     setVisits(prev => [...prev, newVisit]);
   };
 
   const handleUpdateVisit = (visitData: VisitFormData) => {
     if (!selectedVisit) return;
     
-    const updatedVisit: VisitType = {
-      ...selectedVisit,
-      ...visitData,
-      endTime: addMinutesToTime(visitData.scheduledTime, visitData.estimatedDuration),
-      updatedAt: new Date().toISOString()
-    };
-    
-    setVisits(prev => prev.map(visit => 
-      visit.id === selectedVisit.id ? updatedVisit : visit
-    ));
+    const updatedVisit = visitStorage.update(selectedVisit.id, visitData);
+    if (updatedVisit) {
+      setVisits(prev => prev.map(visit => 
+        visit.id === selectedVisit.id ? updatedVisit : visit
+      ));
+    }
   };
 
   const handleDeleteVisit = (visitId: string) => {
     if (confirm('Are you sure you want to delete this visit?')) {
-      setVisits(prev => prev.filter(visit => visit.id !== visitId));
+      const success = visitStorage.delete(visitId);
+      if (success) {
+        setVisits(prev => prev.filter(visit => visit.id !== visitId));
+      }
     }
   };
 
@@ -198,9 +204,12 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
   };
 
   const handleUpdateVisitStatus = (visitId: string, status: VisitType['status']) => {
-    setVisits(prev => prev.map(visit => 
-      visit.id === visitId ? { ...visit, status } : visit
-    ));
+    const updatedVisit = visitStorage.updateStatus(visitId, status);
+    if (updatedVisit) {
+      setVisits(prev => prev.map(visit => 
+        visit.id === visitId ? updatedVisit : visit
+      ));
+    }
   };
 
   const handleFormSubmit = (visitData: VisitFormData) => {

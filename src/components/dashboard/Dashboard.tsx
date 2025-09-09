@@ -7,7 +7,7 @@ import Client from './client/Client';
 import { Property } from "./property/Property";
 import { Estimate } from "./estimate/Estimate";
 import { Job } from "./job/Job";
-import { VisitWithViewMode } from "./visit/VisitWithViewMode.tsx";
+import { VisitWithViewMode } from "./visit/VisitWithViewMode";
 import { Invoice } from "./Invoice";
 import { Payment } from "./Payment";
 import { Files } from "./Files";
