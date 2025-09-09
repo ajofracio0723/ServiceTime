@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Calendar as CalendarIcon, 
   List, 
-  Plus, 
   Search, 
   Filter
 } from 'lucide-react';
@@ -11,25 +10,26 @@ import {
   CalendarView, 
   VisitStatus, 
   VisitType as VisitTypeEnum, 
-  VisitFormData, 
   VisitProgress as VisitProgressType,
   RouteOptimization, 
   DailyRoute, 
   TimelineEvent, 
   LocationCoordinates 
 } from './types';
-import { mockVisits, getStatusColor, getTypeColor, getPriorityColor, filterVisits } from './visitUtils';
-import { addMinutesToTime, formatTime } from './calendarUtils';
-import { VisitForm } from './VisitForm';
+import { getStatusColor, getTypeColor, getPriorityColor, filterVisits } from './visitUtils';
+import { formatTime } from './calendarUtils';
 import { CalendarView as CalendarViewComponent } from './CalendarView';
 import { VisitProgressModal } from './VisitProgressModal';
 import { VisitTimeline } from './VisitTimeline';
 import { RouteManagement } from './RouteManagement';
 import { GPSTracking } from './GPSTracking';
 import { optimizeRoute } from './routeUtils';
+import { VisitDetails } from './VisitDetails';
+import { jobStorage } from '../../../utils/jobStorage';
+import type { Job } from '../job/types';
 
 export const Visit: React.FC = () => {
-  const [visits, setVisits] = useState<VisitType[]>(mockVisits);
+  const [visits, setVisits] = useState<VisitType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<VisitStatus>('all');
   const [filterType, setFilterType] = useState<VisitTypeEnum>('all');
@@ -38,11 +38,146 @@ export const Visit: React.FC = () => {
     type: 'month',
     currentDate: new Date()
   });
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isProgressOpen, setIsProgressOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<VisitType | undefined>();
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
+  // No local scheduling state; scheduling is handled in Job module
+
+  useEffect(() => {
+    const loadFromJobs = () => {
+      const jobs: Job[] = jobStorage.getJobs();
+      setVisits(jobs && jobs.length > 0 ? deriveVisitsFromJobs(jobs) : []);
+    };
+    loadFromJobs();
+    // Update when localStorage changes in this or other tabs
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'servicetime_jobs') {
+        loadFromJobs();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    const onJobsUpdated = () => loadFromJobs();
+    window.addEventListener('servicetime_jobs_updated' as any, onJobsUpdated as any);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('servicetime_jobs_updated' as any, onJobsUpdated as any);
+    };
+  }, []);
+
+  const deriveVisitsFromJobs = (jobs: Job[]): VisitType[] => {
+    const parseDurationToMinutes = (dur?: string | number): number => {
+      if (typeof dur === 'number') return dur;
+      if (!dur) return 120;
+      const s = dur.toLowerCase().trim();
+      const h = s.match(/(\d+(?:\.\d+)?)\s*h/);
+      const m = s.match(/(\d+)\s*m/);
+      if (h || m) {
+        const hours = h ? parseFloat(h[1]) : 0;
+        const mins = m ? parseInt(m[1], 10) : 0;
+        return Math.max(30, Math.round(hours * 60 + mins));
+      }
+      const num = parseFloat(s);
+      return isNaN(num) ? 120 : Math.max(30, Math.round(num));
+    };
+
+    const toVisitType = (category: Job['category']): Exclude<VisitTypeEnum, 'all'> => {
+      switch (category) {
+        case 'maintenance': return 'maintenance';
+        case 'inspection': return 'inspection';
+        case 'repair': return 'repair';
+        case 'installation': return 'repair';
+        default: return 'maintenance';
+      }
+    };
+
+    const computeEndTime = (time: string, durationMinutes: number): string => {
+      const [h, m] = time.split(':').map(Number);
+      const total = h * 60 + m + durationMinutes;
+      const hh = Math.floor(total / 60) % 24;
+      const mm = total % 60;
+      return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+    };
+
+    const mapStatus = (s: any): Exclude<VisitStatus, 'all'> => {
+      switch (s) {
+        case 'scheduled': return 'scheduled';
+        case 'completed': return 'completed';
+        case 'cancelled': return 'cancelled';
+        case 'rescheduled': return 'scheduled';
+        default: return 'scheduled';
+      }
+    };
+
+    const result: VisitType[] = [];
+    jobs.forEach(job => {
+      const primaryTech = job.assignedTechnicians.find(t => t.isPrimary) || job.assignedTechnicians[0];
+      const scheduledVisits = job.scheduledVisits || [];
+      scheduledVisits.forEach(sv => {
+        const scheduledTime = sv.time || job.scheduledTime || '09:00';
+        const estimatedDuration = parseDurationToMinutes(sv.duration || job.estimatedDuration);
+        result.push({
+          id: `${job.id}-${sv.id}`,
+          clientId: job.clientId,
+          clientName: job.clientName,
+          propertyId: job.propertyId,
+          propertyAddress: job.propertyAddress,
+          scheduledDate: sv.date || job.scheduledDate,
+          scheduledTime,
+          endTime: computeEndTime(scheduledTime, estimatedDuration),
+          status: mapStatus(sv.status),
+          visitType: toVisitType(job.category),
+          priority: job.priority,
+          technician: primaryTech ? primaryTech.name : 'Unassigned',
+          technicianId: primaryTech ? primaryTech.id : '',
+          estimatedDuration,
+          actualDuration: undefined,
+          notes: sv.notes || job.description || '',
+          contactPhone: '',
+          contactEmail: '',
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+          jobId: job.id,
+          progress: undefined,
+          route: undefined,
+          timeline: undefined,
+          location: undefined,
+        });
+      });
+      // If no per-visit schedules exist but the job has a scheduledDate, create a single visit from job-level schedule
+      if (scheduledVisits.length === 0 && job.scheduledDate) {
+        const scheduledTime = job.scheduledTime || '09:00';
+        const estimatedDuration = parseDurationToMinutes(job.estimatedDuration);
+        result.push({
+          id: `${job.id}-job-schedule`,
+          clientId: job.clientId,
+          clientName: job.clientName,
+          propertyId: job.propertyId,
+          propertyAddress: job.propertyAddress,
+          scheduledDate: job.scheduledDate,
+          scheduledTime,
+          endTime: computeEndTime(scheduledTime, estimatedDuration),
+          status: 'scheduled',
+          visitType: toVisitType(job.category),
+          priority: job.priority,
+          technician: primaryTech ? primaryTech.name : 'Unassigned',
+          technicianId: primaryTech ? primaryTech.id : '',
+          estimatedDuration,
+          actualDuration: undefined,
+          notes: job.description || '',
+          contactPhone: '',
+          contactEmail: '',
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+          jobId: job.id,
+          progress: undefined,
+          route: undefined,
+          timeline: undefined,
+          location: undefined,
+        });
+      }
+    });
+    return result;
+  };
 
   // Route management handlers
   const handleOptimizeRoute = async (technicianId: string, date: string): Promise<RouteOptimization> => {
@@ -117,56 +252,24 @@ export const Visit: React.FC = () => {
     type: filterType
   });
 
-  const handleCreateVisit = (visitData: VisitFormData) => {
-    const newVisit: VisitType = {
-      id: Date.now().toString(),
-      ...visitData,
-      endTime: addMinutesToTime(visitData.scheduledTime, visitData.estimatedDuration),
-      status: 'scheduled',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setVisits(prev => [...prev, newVisit]);
-  };
-
-  const handleUpdateVisit = (visitData: VisitFormData) => {
-    if (!selectedVisit) return;
-    
-    const updatedVisit: VisitType = {
-      ...selectedVisit,
-      ...visitData,
-      endTime: addMinutesToTime(visitData.scheduledTime, visitData.estimatedDuration),
-      updatedAt: new Date().toISOString()
-    };
-    
-    setVisits(prev => prev.map(visit => 
-      visit.id === selectedVisit.id ? updatedVisit : visit
-    ));
-  };
-
-  const handleDeleteVisit = (visitId: string) => {
-    if (confirm('Are you sure you want to delete this visit?')) {
-      setVisits(prev => prev.filter(visit => visit.id !== visitId));
-    }
-  };
-
-  const handleDateSelect = (date: Date, time?: string) => {
-    setSelectedDate(date.toISOString().split('T')[0]);
-    setSelectedTime(time || '09:00');
+  const handleDateSelect = (_date: Date, _time?: string) => {
+    // No scheduling from Visit module
     setSelectedVisit(undefined);
-    setIsFormOpen(true);
   };
 
   const handleVisitClick = (visit: VisitType) => {
     setSelectedVisit(visit);
-    setSelectedDate('');
-    setSelectedTime('');
-    setIsFormOpen(true);
+    // No editing from Visit module
   };
 
   const handleProgressClick = (visit: VisitType) => {
     setSelectedVisit(visit);
     setIsProgressOpen(true);
+  };
+
+  const handleDetailsClick = (visit: VisitType) => {
+    setSelectedVisit(visit);
+    setIsDetailsOpen(true);
   };
 
   const handleUpdateProgress = (visitId: string, progress: Partial<VisitProgressType>) => {
@@ -178,19 +281,24 @@ export const Visit: React.FC = () => {
   };
 
   const handleUpdateVisitStatus = (visitId: string, status: VisitType['status']) => {
-    setVisits(prev => prev.map(visit => 
-      visit.id === visitId ? { ...visit, status } : visit
-    ));
-  };
-
-  const handleFormSubmit = (visitData: VisitFormData) => {
-    if (selectedVisit) {
-      handleUpdateVisit(visitData);
-    } else {
-      handleCreateVisit(visitData);
+    setVisits(prev => prev.map(visit => visit.id === visitId ? { ...visit, status } : visit));
+    // Sync terminal statuses back to related Job scheduled visit
+    const v = visits.find(x => x.id === visitId);
+    if (v && v.jobId && (status === 'completed' || status === 'cancelled')) {
+      const jobs = jobStorage.getJobs();
+      const idx = jobs.findIndex(j => j.id === v.jobId);
+      if (idx !== -1) {
+        const job = { ...jobs[idx] } as Job;
+        job.scheduledVisits = job.scheduledVisits.map(sv => {
+          if (`${job.id}-${sv.id}` === visitId) {
+            return { ...sv, status: status === 'completed' ? 'completed' : 'cancelled' } as any;
+          }
+          return sv;
+        });
+        jobs[idx] = job;
+        jobStorage.saveJobs(jobs);
+      }
     }
-    setIsFormOpen(false);
-    setSelectedVisit(undefined);
   };
 
   return (
@@ -199,7 +307,7 @@ export const Visit: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Service Visits</h2>
-          <p className="text-gray-600">Schedule and manage your service visits</p>
+          <p className="text-gray-600">Visits are generated from Job schedules. Manage scheduling in Jobs.</p>
         </div>
         <div className="flex items-center space-x-3">
           {/* View Toggle */}
@@ -267,19 +375,7 @@ export const Visit: React.FC = () => {
               <span>GPS</span>
             </button>
           </div>
-          
-          <button 
-            onClick={() => {
-              setSelectedVisit(undefined);
-              setSelectedDate('');
-              setSelectedTime('');
-              setIsFormOpen(true);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule Visit</span>
-          </button>
+          {/* Scheduling button removed */}
         </div>
       </div>
 
@@ -338,12 +434,20 @@ export const Visit: React.FC = () => {
         />
       )}
 
+      {/* Visit Details Modal */}
+      {selectedVisit && (
+        <VisitDetails
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          visit={selectedVisit}
+        />
+      )}
+
       {viewMode === 'list' && (
         <VisitListView 
           visits={filteredVisits}
-          onVisitClick={handleVisitClick}
           onProgressClick={handleProgressClick}
-          onDeleteVisit={handleDeleteVisit}
+          onDetailsClick={handleDetailsClick}
         />
       )}
 
@@ -405,19 +509,7 @@ export const Visit: React.FC = () => {
         </div>
       )}
 
-      {/* Visit Form Modal */}
-      <VisitForm
-        isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setSelectedVisit(undefined);
-        }}
-        onSubmit={handleFormSubmit}
-        visit={selectedVisit}
-        selectedDate={selectedDate}
-        selectedTime={selectedTime}
-        visits={visits}
-      />
+      {/* Scheduling form removed; create/edit visits in Job module */}
 
       {/* Visit Progress Modal */}
       {selectedVisit && (
@@ -439,12 +531,11 @@ export const Visit: React.FC = () => {
 // List View Component
 interface VisitListViewProps {
   visits: VisitType[];
-  onVisitClick: (visit: VisitType) => void;
   onProgressClick: (visit: VisitType) => void;
-  onDeleteVisit: (visitId: string) => void;
+  onDetailsClick: (visit: VisitType) => void;
 }
 
-const VisitListView: React.FC<VisitListViewProps> = ({ visits, onVisitClick, onProgressClick, onDeleteVisit }) => {
+const VisitListView: React.FC<VisitListViewProps> = ({ visits, onProgressClick, onDetailsClick }) => {
   
   return (
     <div className="space-y-4">
@@ -478,18 +569,13 @@ const VisitListView: React.FC<VisitListViewProps> = ({ visits, onVisitClick, onP
                   Progress
                 </button>
               )}
-              <button 
-                onClick={() => onVisitClick(visit)}
-                className="text-blue-600 hover:text-blue-900 px-3 py-1 text-sm font-medium"
+              <button
+                onClick={() => onDetailsClick(visit)}
+                className="text-gray-700 hover:text-gray-900 px-3 py-1 text-sm font-medium"
               >
-                Edit
+                Details
               </button>
-              <button 
-                onClick={() => onDeleteVisit(visit.id)}
-                className="text-red-600 hover:text-red-900 px-3 py-1 text-sm font-medium"
-              >
-                Delete
-              </button>
+              {/* Edit/Delete disabled in Visit module; manage in Jobs */}
             </div>
           </div>
 

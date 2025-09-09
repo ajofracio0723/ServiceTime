@@ -12,6 +12,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Property as PropertyType } from './types';
+import { Client as DomainClient } from '../../../types/domains/Client';
 import { PropertyForm } from './PropertyForm';
 import { PropertyDetails } from './PropertyDetails';
 import { 
@@ -33,6 +34,7 @@ export const Property = () => {
   const [equipmentStatusFilter, setEquipmentStatusFilter] = useState<string>("all");
   const [showMaintenanceAlerts, setShowMaintenanceAlerts] = useState(true);
   const [properties, setProperties] = useState<PropertyType[]>([]);
+  const [clients, setClients] = useState<DomainClient[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<PropertyType | undefined>(undefined);
   const [viewingProperty, setViewingProperty] = useState<PropertyType | undefined>(undefined);
@@ -48,6 +50,16 @@ export const Property = () => {
     // TODO: Fetch from API when backend is ready
   }, []);
 
+  // Load clients for display and search
+  useEffect(() => {
+    try {
+      const savedClients = localStorage.getItem('clients');
+      if (savedClients) {
+        setClients(JSON.parse(savedClients) as DomainClient[]);
+      }
+    } catch {}
+  }, []);
+
   // Save properties to localStorage when they change
   useEffect(() => {
     if (properties.length > 0) {
@@ -60,14 +72,23 @@ export const Property = () => {
   const equipmentSummary = getEquipmentStatusSummary(allEquipment);
   const maintenanceAlerts = getMaintenanceAlerts(allEquipment);
 
+  const getClientDisplayName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return clientId; // fallback to ID if not found
+    if (client.type === 'company') return client.companyName || clientId;
+    const fullName = `${client.firstName || ''} ${client.lastName || ''}`.trim();
+    return fullName || clientId;
+  };
+
   const filteredProperties = properties.filter((property) => {
     const fullAddress = `${property.address.street}, ${property.address.city}, ${property.address.state} ${property.address.zipCode}`;
     const equipmentNames = property.linkedEquipment.map(eq => eq.name.toLowerCase()).join(' ');
+    const clientName = getClientDisplayName(property.clientId).toLowerCase();
     
     const matchesSearch =
       property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fullAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.clientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      clientName.includes(searchTerm.toLowerCase()) ||
       equipmentNames.includes(searchTerm.toLowerCase());
     
     const matchesType = filterType === "all" || property.propertyType === filterType;
@@ -370,8 +391,8 @@ export const Property = () => {
                   <span className="truncate">{fullAddress}</span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  <span className="font-medium">Client ID:</span>{" "}
-                  {property.clientId}
+                  <span className="font-medium">Client:</span>{" "}
+                  {getClientDisplayName(property.clientId)}
                 </div>
                 {property.geoLocation && (
                   <div className="text-sm text-gray-600">

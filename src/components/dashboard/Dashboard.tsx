@@ -13,6 +13,7 @@ import { Payment } from "./Payment";
 import { Files } from "./Files";
 import { Settings } from "./Settings";
 import { Notification } from "./Notification";
+import { PriceBook } from "./pricebook/PriceBook";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
   Calendar,
@@ -129,6 +130,9 @@ export const Dashboard = () => {
       case "invoices":
         return <Invoice />;
 
+      case "pricebook":
+        return <PriceBook />;
+
       case "payments":
         return <Payment />;
 
@@ -142,9 +146,6 @@ export const Dashboard = () => {
         return <Settings section={activeSection} />;
 
       case "settings-users":
-        return <Settings section={activeSection} />;
-
-      case "settings-pricebook":
         return <Settings section={activeSection} />;
 
       case "settings-communication":

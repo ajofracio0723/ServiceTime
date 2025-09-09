@@ -13,6 +13,8 @@ import {
 import { Estimate, EstimateItem } from '../../../types/domains/Estimate';
 import { Client } from '../../../types/domains/Client';
 import { Property } from '../../../types/domains/Property';
+import { PriceBookPicker } from './PriceBookPicker';
+import type { PickerTab } from './PriceBookPicker';
 
 interface EstimateFormProps {
   isOpen: boolean;
@@ -72,6 +74,15 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerInitialTab, setPickerInitialTab] = useState<PickerTab>('services');
+
+  const mapTypeToTab = (t: EstimateItem['type']): PickerTab => {
+    if (t === 'service') return 'services';
+    if (t === 'part') return 'parts';
+    if (t === 'labor') return 'labor';
+    return 'services';
+  };
 
   useEffect(() => {
     if (estimate) {
@@ -124,12 +135,56 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
     });
   }, [formData.items, formData.discounts, formData.taxes]);
 
+  const handleSelectFromPriceBook = (payload: { type: 'service' | 'part' | 'labor'; data: any }) => {
+    if (!payload) return;
+    const { type, data } = payload;
+    const next: Partial<EstimateItem> = {
+      type,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      quantity: 1,
+      taxable: true,
+      itemId: data.id,
+    } as any;
+    if (type === 'service') {
+      next.unitPrice = data.basePrice ?? 0;
+    } else if (type === 'part') {
+      const price = (data.cost ?? 0) * (1 + (data.markup ?? 0) / 100);
+      next.unitPrice = Number(price.toFixed(2));
+    } else if (type === 'labor') {
+      next.unitPrice = data.hourlyRate ?? 0;
+    }
+    setNewItem(prev => ({ ...prev, ...next }));
+    setIsPickerOpen(false);
+  };
+
+  const handleSelectTax = (tax: { name: string; rate: number }) => {
+    setFormData(prev => {
+      const existing = (prev.taxes || []).some(t => t.name === tax.name && t.rate === tax.rate);
+      const taxes = existing ? prev.taxes || [] : [ ...(prev.taxes || []), { name: tax.name, rate: tax.rate, amount: 0 } ];
+      return { ...prev, taxes };
+    });
+    setIsPickerOpen(false);
+  };
+
+  const handleSelectDiscount = (discount: { type: 'percentage' | 'fixed'; value: number }) => {
+    setFormData(prev => {
+      const exists = (prev.discounts || []).some(d => d.type === discount.type && d.value === discount.value);
+      const discounts = exists ? prev.discounts || [] : [ ...(prev.discounts || []), { type: discount.type, value: discount.value } ];
+      return { ...prev, discounts };
+    });
+    setIsPickerOpen(false);
+  };
+
   // Recalculate totals when items, taxes, or discounts change
   useEffect(() => {
     calculateTotals();
   }, [calculateTotals]);
 
   const addItem = () => {
+    // Debug: ensure this handler is firing when clicking the button
+    try { console.debug('[EstimateForm] addItem clicked', newItem); } catch {}
     if (!newItem.name || !newItem.unitPrice || !newItem.quantity) {
       setErrors({ newItem: 'Please fill in all required fields' });
       return;
@@ -209,6 +264,16 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
   const selectedProperty = properties.find(p => p.id === formData.propertyId);
   const clientProperties = properties.filter(p => p.clientId === formData.clientId);
 
+  // Auto-select the first property of the selected client if none is selected yet
+  useEffect(() => {
+    if (formData.clientId && !formData.propertyId) {
+      const firstForClient = properties.find(p => p.clientId === formData.clientId);
+      if (firstForClient) {
+        setFormData(prev => ({ ...prev, propertyId: firstForClient.id }));
+      }
+    }
+  }, [formData.clientId, formData.propertyId, properties]);
+
   if (!isOpen) return null;
 
   return (
@@ -273,7 +338,13 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
               <select
                 value={formData.clientId || ''}
                 onChange={(e) => {
-                  setFormData(prev => ({ ...prev, clientId: e.target.value, propertyId: '' }));
+                  const newClientId = e.target.value;
+                  const firstProperty = properties.find(p => p.clientId === newClientId);
+                  setFormData(prev => ({
+                    ...prev,
+                    clientId: newClientId,
+                    propertyId: firstProperty?.id || ''
+                  }));
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.clientId ? 'border-red-500' : 'border-gray-300'
@@ -416,12 +487,41 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
               </label>
 
               <button
+                type="button"
                 onClick={addItem}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Item</span>
               </button>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => { setPickerInitialTab(mapTypeToTab(newItem.type || 'service')); setIsPickerOpen(true); }}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Browse Price Book
+              </button>
+              <div className="flex items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => { setPickerInitialTab('taxes'); setIsPickerOpen(true); }}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  title="Add tax from Price Book"
+                >
+                  Add Tax
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPickerInitialTab('discounts'); setIsPickerOpen(true); }}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  title="Add discount from Price Book"
+                >
+                  Add Discount
+                </button>
+              </div>
             </div>
 
             {errors.newItem && <p className="text-red-500 text-sm mt-2">{errors.newItem}</p>}
@@ -532,6 +632,15 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
           </div>
         </div>
       </div>
+      {/* PriceBook Picker Modal */}
+      <PriceBookPicker
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        initialTab={pickerInitialTab}
+        onSelectItem={handleSelectFromPriceBook}
+        onSelectTax={handleSelectTax as any}
+        onSelectDiscount={handleSelectDiscount as any}
+      />
     </div>
   );
 };

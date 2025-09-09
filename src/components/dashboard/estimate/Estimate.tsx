@@ -34,200 +34,40 @@ export const Estimate = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
 
-  // Load mock data on component mount
+  // Load data on component mount
   useEffect(() => {
-    // Create compatible mock clients
-    const mockClients: Client[] = [
-      {
-        id: 'client-001',
-        type: 'individual',
-        firstName: 'John',
-        lastName: 'Smith',
-        email: 'john.smith@email.com',
-        phone: '(555) 123-4567',
-        contacts: [{
-          id: 'contact-001',
-          name: 'John Smith',
-          email: 'john.smith@email.com',
-          phone: '(555) 123-4567',
-          isPrimary: true
-        }],
-        billingAddress: {
-          street: '123 Main St',
-          city: 'Anytown',
-          state: 'CA',
-          zipCode: '12345',
-          country: 'USA'
-        },
-        notes: '',
-        serviceHistory: [],
-        tags: [],
-        isActive: true,
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'client-002',
-        type: 'company',
-        companyName: 'ABC Property Management',
-        email: 'sarah@abcproperties.com',
-        phone: '(555) 987-6543',
-        contacts: [{
-          id: 'contact-002',
-          name: 'Sarah Johnson',
-          email: 'sarah@abcproperties.com',
-          phone: '(555) 987-6543',
-          role: 'Property Manager',
-          isPrimary: true
-        }],
-        billingAddress: {
-          street: '456 Business Ave',
-          city: 'Downtown',
-          state: 'CA',
-          zipCode: '90210',
-          country: 'USA'
-        },
-        notes: '',
-        serviceHistory: [],
-        tags: [],
-        isActive: true,
-        createdAt: '2024-01-20T14:15:00Z',
-        updatedAt: '2024-01-20T14:15:00Z'
-      },
-      {
-        id: 'client-003',
-        type: 'individual',
-        firstName: 'Michael',
-        lastName: 'Chen',
-        email: 'michael.chen@gmail.com',
-        phone: '(555) 456-7890',
-        contacts: [{
-          id: 'contact-003',
-          name: 'Michael Chen',
-          email: 'michael.chen@gmail.com',
-          phone: '(555) 456-7890',
-          isPrimary: true
-        }],
-        billingAddress: {
-          street: '789 Oak Drive',
-          city: 'Suburbia',
-          state: 'CA',
-          zipCode: '90211',
-          country: 'USA'
-        },
-        notes: '',
-        serviceHistory: [],
-        tags: [],
-        isActive: true,
-        createdAt: '2024-02-01T09:45:00Z',
-        updatedAt: '2024-02-01T09:45:00Z'
+    try {
+      // Estimates
+      const savedEstimates = localStorage.getItem('estimates');
+      if (savedEstimates) {
+        setEstimates(JSON.parse(savedEstimates) as EstimateType[]);
+      } else {
+        setEstimates(sampleEstimates);
       }
-    ];
 
-    // Create compatible mock properties
-    const mockProperties: Property[] = [
-      {
-        id: 'prop-001',
-        clientId: 'client-001',
-        name: 'Main Residence',
-        propertyType: 'residential',
-        address: {
-          street: '123 Main St',
-          city: 'Anytown',
-          state: 'CA',
-          zipCode: '12345',
-          country: 'USA'
-        },
-        geoLocation: {
-          latitude: 37.7749,
-          longitude: -122.4194
-        },
-        accessNotes: {
-          gateCode: '',
-          keyLocation: 'Under doormat',
-          emergencyContact: {
-            name: 'John Smith',
-            phone: '(555) 123-4567'
-          },
-          parkingInstructions: 'Driveway available',
-          specialInstructions: 'Ring doorbell'
-        },
-        linkedEquipment: [],
-        photos: [],
-        isActive: true,
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'prop-002',
-        clientId: 'client-002',
-        name: 'Downtown Office Complex',
-        propertyType: 'commercial',
-        address: {
-          street: '456 Business Ave',
-          city: 'Downtown',
-          state: 'CA',
-          zipCode: '90210',
-          country: 'USA'
-        },
-        geoLocation: {
-          latitude: 34.0522,
-          longitude: -118.2437
-        },
-        accessNotes: {
-          gateCode: '#5678',
-          keyLocation: 'Security desk',
-          emergencyContact: {
-            name: 'Building Security',
-            phone: '(555) 234-5678'
-          },
-          parkingInstructions: 'Visitor parking in underground garage',
-          specialInstructions: 'Check in with security desk in lobby'
-        },
-        linkedEquipment: [],
-        photos: [],
-        isActive: true,
-        createdAt: '2024-01-20T14:30:00Z',
-        updatedAt: '2024-01-20T14:30:00Z'
-      },
-      {
-        id: 'prop-003',
-        clientId: 'client-003',
-        name: 'Family Home',
-        propertyType: 'residential',
-        address: {
-          street: '789 Oak Drive',
-          city: 'Suburbia',
-          state: 'CA',
-          zipCode: '90211',
-          country: 'USA'
-        },
-        geoLocation: {
-          latitude: 34.0622,
-          longitude: -118.2537
-        },
-        accessNotes: {
-          gateCode: '',
-          keyLocation: 'Spare key with neighbor',
-          emergencyContact: {
-            name: 'Michael Chen',
-            phone: '(555) 456-7890'
-          },
-          parkingInstructions: 'Street parking available',
-          specialInstructions: 'Call before arrival'
-        },
-        linkedEquipment: [],
-        photos: [],
-        isActive: true,
-        createdAt: '2024-02-01T10:00:00Z',
-        updatedAt: '2024-02-01T10:00:00Z'
+      // Clients (shared with Client module)
+      const savedClients = localStorage.getItem('clients');
+      if (savedClients) {
+        setClients(JSON.parse(savedClients) as Client[]);
       }
-    ];
 
-    setEstimates(sampleEstimates);
-    setClients(mockClients as any);
-    setProperties(mockProperties as any);
+      // Properties (shared with Property module)
+      const savedProps = localStorage.getItem('properties');
+      if (savedProps) {
+        setProperties(JSON.parse(savedProps) as Property[]);
+      }
+    } catch (e) {
+      // Fallback to sample estimates only
+      setEstimates(sampleEstimates);
+    }
   }, []);
+
+  // Persist estimates to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('estimates', JSON.stringify(estimates));
+    } catch {}
+  }, [estimates]);
 
   const handleSaveEstimate = (estimateData: Partial<EstimateType>) => {
     if (selectedEstimate) {
@@ -239,14 +79,40 @@ export const Estimate = () => {
       ));
     } else {
       // Create new estimate
+      const nowIso = new Date().toISOString();
+      const defaultValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       const newEstimate: EstimateType = {
         id: `est-${Date.now()}`,
         estimateNumber: estimateData.estimateNumber || `EST-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+        clientId: estimateData.clientId || '',
+        propertyId: estimateData.propertyId || '',
+        title: estimateData.title || 'New Estimate',
+        description: estimateData.description || '',
+        items: estimateData.items || [],
+        subtotal: estimateData.subtotal ?? 0,
+        taxes: estimateData.taxes || [],
+        totalTaxAmount: estimateData.totalTaxAmount ?? 0,
+        discounts: estimateData.discounts || [],
+        totalDiscountAmount: estimateData.totalDiscountAmount ?? 0,
+        total: estimateData.total ?? 0,
+        terms: estimateData.terms || { validUntil: defaultValidUntil, paymentTerms: 'Net 30' },
+        depositRequirement: estimateData.depositRequirement || { isRequired: false },
+        clientApproval: estimateData.clientApproval || { isApproved: false },
+        status: estimateData.status || 'draft',
+        templateId: estimateData.templateId,
+        notes: estimateData.notes,
+        internalNotes: estimateData.internalNotes,
+        attachments: estimateData.attachments || [],
         createdBy: 'current-user',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        clientApproval: { isApproved: false },
-        ...estimateData
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        sentAt: estimateData.sentAt,
+        viewedAt: estimateData.viewedAt,
+        approvedAt: estimateData.approvedAt,
+        rejectedAt: estimateData.rejectedAt,
+        expiredAt: estimateData.expiredAt,
+        convertedToJobAt: estimateData.convertedToJobAt,
+        jobId: estimateData.jobId,
       } as EstimateType;
       
       setEstimates(prev => [newEstimate, ...prev]);
@@ -268,13 +134,13 @@ export const Estimate = () => {
   const filteredEstimates = estimates.filter((estimate: EstimateType) => {
     const client = clients.find(c => c.id === estimate.clientId);
     const property = properties.find(p => p.id === estimate.propertyId);
-    const clientName = client?.type === 'company' ? client.companyName : `${client?.firstName || ''} ${client?.lastName || ''}`.trim();
-    const propertyAddress = property ? `${property.address.street}, ${property.address.city}` : '';
+    const clientName = client?.type === 'company' ? (client?.companyName || '') : `${client?.firstName || ''} ${client?.lastName || ''}`.trim();
+    const propertyAddress = property ? `${property.address?.street || ''}, ${property.address?.city || ''}`.trim() : '';
     
-    const matchesSearch = estimate.estimateNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         estimate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         propertyAddress.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (estimate.estimateNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (estimate.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (clientName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (propertyAddress || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || estimate.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -348,7 +214,7 @@ export const Estimate = () => {
           const client = clients.find(c => c.id === estimate.clientId);
           const property = properties.find(p => p.id === estimate.propertyId);
           const clientName = client?.type === 'company' ? client.companyName : `${client?.firstName || ''} ${client?.lastName || ''}`.trim();
-          const isExpired = isEstimateExpired(estimate);
+          const isExpired = estimate.terms?.validUntil ? isEstimateExpired(estimate as any) : false;
           
           return (
             <div key={estimate.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -358,19 +224,19 @@ export const Estimate = () => {
                     {getStatusIcon(estimate.status)}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{estimate.estimateNumber}</h3>
-                    <p className="text-sm text-gray-600 font-medium">{estimate.title}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{estimate.estimateNumber || '—'}</h3>
+                    <p className="text-sm text-gray-600 font-medium">{estimate.title || ''}</p>
                     <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstimateStatusColor(estimate.status)}`}>
                         {estimate.status}
                       </span>
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        Created: {new Date(estimate.createdAt).toLocaleDateString()}
+                        Created: {estimate.createdAt ? new Date(estimate.createdAt).toLocaleDateString() : '—'}
                       </span>
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        Expires: {new Date(estimate.terms.validUntil).toLocaleDateString()}
+                        Expires: {estimate.terms?.validUntil ? new Date(estimate.terms.validUntil).toLocaleDateString() : '—'}
                       </span>
                       {isExpired && (
                         <span className="text-red-600 font-medium">EXPIRED</span>
@@ -405,27 +271,27 @@ export const Estimate = () => {
                   <div className="flex items-center text-sm text-gray-600">
                     <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                     <span className="truncate">
-                      {property ? `${property.address.street}, ${property.address.city}` : 'Unknown Property'}
+                      {property ? `${property.address?.street || ''}, ${property.address?.city || ''}` : 'Unknown Property'}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">Description:</span> {estimate.description}
+                    <span className="font-medium">Description:</span> {estimate.description || ''}
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center text-sm text-gray-600">
                     <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
-                    <span><span className="font-medium">Total Amount:</span> ${estimate.total.toLocaleString()}</span>
+                    <span><span className="font-medium">Total Amount:</span> ${Number(estimate.total || 0).toLocaleString()}</span>
                   </div>
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">Items:</span> {estimate.items.length} line items
+                    <span className="font-medium">Items:</span> {(estimate.items || []).length} line items
                   </div>
-                  {estimate.depositRequirement.isRequired && (
+                  {estimate.depositRequirement?.isRequired && (
                     <div className="text-sm text-yellow-600">
                       <span className="font-medium">Deposit Required:</span> 
-                      {estimate.depositRequirement.percentage 
+                      {estimate.depositRequirement?.percentage 
                         ? ` ${estimate.depositRequirement.percentage}%`
-                        : ` $${estimate.depositRequirement.amount}`
+                        : ` $${estimate.depositRequirement?.amount || 0}`
                       }
                     </div>
                   )}
@@ -436,7 +302,7 @@ export const Estimate = () => {
               <div className="border-t border-gray-200 pt-4 mb-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-3">Estimate Items</h4>
                 <div className="space-y-2">
-                  {estimate.items.slice(0, 3).map((item) => (
+                  {(estimate.items || []).slice(0, 3).map((item) => (
                     <div key={item.id} className="flex items-center justify-between text-sm">
                       <div className="flex-1">
                         <span className="font-medium">{item.name}</span>
@@ -448,13 +314,13 @@ export const Estimate = () => {
                         <span className="text-gray-500 ml-2">x{item.quantity}</span>
                       </div>
                       <div className="text-gray-600">
-                        ${item.unitPrice.toFixed(2)} × {item.quantity} = ${item.total.toFixed(2)}
+                        ${Number(item.unitPrice || 0).toFixed(2)} × {item.quantity} = ${Number(item.total || 0).toFixed(2)}
                       </div>
                     </div>
                   ))}
-                  {estimate.items.length > 3 && (
+                  {(estimate.items || []).length > 3 && (
                     <div className="text-sm text-gray-500 text-center py-2">
-                      ... and {estimate.items.length - 3} more items
+                      ... and {(estimate.items || []).length - 3} more items
                     </div>
                   )}
                 </div>
@@ -518,20 +384,25 @@ export const Estimate = () => {
         properties={properties}
       />
 
-      {selectedEstimate && (
-        <EstimatePreview
-          isOpen={isPreviewOpen}
-          onClose={() => {
-            setIsPreviewOpen(false);
-            setSelectedEstimate(null);
-          }}
-          estimate={selectedEstimate}
-          client={clients.find(c => c.id === selectedEstimate.clientId)!}
-          property={properties.find(p => p.id === selectedEstimate.propertyId)!}
-          onDownload={() => console.log('Download PDF')}
-          onSend={() => console.log('Send estimate')}
-        />
-      )}
+      {selectedEstimate && (() => {
+        const client = clients.find(c => c.id === selectedEstimate.clientId);
+        const property = properties.find(p => p.id === selectedEstimate.propertyId);
+        if (!client || !property) return null;
+        return (
+          <EstimatePreview
+            isOpen={isPreviewOpen}
+            onClose={() => {
+              setIsPreviewOpen(false);
+              setSelectedEstimate(null);
+            }}
+            estimate={selectedEstimate}
+            client={client}
+            property={property}
+            onDownload={() => console.log('Download PDF')}
+            onSend={() => console.log('Send estimate')}
+          />
+        );
+      })()}
     </div>
   );
 };

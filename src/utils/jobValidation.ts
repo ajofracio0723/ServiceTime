@@ -21,17 +21,21 @@ export const validateJob = (job: Partial<JobFormData>): ValidationError[] => {
     errors.push({ field: 'propertyId', message: 'Property selection is required' });
   }
 
-  if (!job.scheduledDate) {
-    errors.push({ field: 'scheduledDate', message: 'Scheduled date is required' });
-  } else {
-    // Validate date is not in the past (unless it's today)
-    const scheduledDate = new Date(job.scheduledDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    scheduledDate.setHours(0, 0, 0, 0);
-    
-    if (scheduledDate < today) {
-      errors.push({ field: 'scheduledDate', message: 'Scheduled date cannot be in the past' });
+  // Job-level schedule: required only if no per-visit schedules are provided
+  const hasPerVisitSchedules = !!(job.scheduledVisits && job.scheduledVisits.length > 0);
+  if (!hasPerVisitSchedules) {
+    if (!job.scheduledDate) {
+      errors.push({ field: 'scheduledDate', message: 'Scheduled date is required' });
+    } else {
+      // Validate date is not in the past (unless it's today)
+      const scheduledDate = new Date(job.scheduledDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      scheduledDate.setHours(0, 0, 0, 0);
+      
+      if (scheduledDate < today) {
+        errors.push({ field: 'scheduledDate', message: 'Scheduled date cannot be in the past' });
+      }
     }
   }
 
@@ -43,8 +47,10 @@ export const validateJob = (job: Partial<JobFormData>): ValidationError[] => {
     errors.push({ field: 'priority', message: 'Priority level is required' });
   }
 
-  if (!job.estimatedDuration?.trim()) {
-    errors.push({ field: 'estimatedDuration', message: 'Estimated duration is required' });
+  if (!hasPerVisitSchedules) {
+    if (!job.estimatedDuration?.trim()) {
+      errors.push({ field: 'estimatedDuration', message: 'Estimated duration is required' });
+    }
   }
 
   // Scope validation

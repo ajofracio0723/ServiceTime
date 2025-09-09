@@ -3,12 +3,10 @@ import {
   Settings as SettingsIcon, 
   User, 
   Users,
-  Package,
   MessageSquare
 } from 'lucide-react';
 import { AccountSettings } from './AccountSettings';
 import { UserMembership } from './UserMembership';
-import { PriceBook } from './PriceBook';
 import { Communication } from './Communication';
 
 interface SettingsProps {
@@ -16,14 +14,12 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
-  const getInitialSection = (): 'account' | 'users' | 'pricebook' | 'communication' => {
+  const getInitialSection = (): 'account' | 'users' | 'communication' => {
     switch (section) {
       case 'settings-account':
         return 'account';
       case 'settings-users':
         return 'users';
-      case 'settings-pricebook':
-        return 'pricebook';
       case 'settings-communication':
         return 'communication';
       default:
@@ -31,17 +27,15 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
     }
   };
 
-  const [activeSection, setActiveSection] = useState<'account' | 'users' | 'pricebook' | 'communication'>(getInitialSection());
+  const [activeSection, setActiveSection] = useState<'account' | 'users' | 'communication'>(getInitialSection());
 
   useEffect(() => {
-    const newSection = (): 'account' | 'users' | 'pricebook' | 'communication' => {
+    const newSection = (): 'account' | 'users' | 'communication' => {
       switch (section) {
         case 'settings-account':
           return 'account';
         case 'settings-users':
           return 'users';
-        case 'settings-pricebook':
-          return 'pricebook';
         case 'settings-communication':
           return 'communication';
         default:
@@ -65,12 +59,6 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
       description: 'Create user profiles, assign memberships, configure permissions and details'
     },
     { 
-      id: 'pricebook', 
-      label: 'Price Book', 
-      icon: Package, 
-      description: 'Manage services, parts, labor rates, taxes, and discount configurations'
-    },
-    { 
       id: 'communication', 
       label: 'Communication', 
       icon: MessageSquare, 
@@ -84,8 +72,6 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
         return <AccountSettings />;
       case 'users':
         return <UserMembership />;
-      case 'pricebook':
-        return <PriceBook />;
       case 'communication':
         return <Communication />;
       default:
@@ -101,7 +87,7 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
           <SettingsIcon className="w-8 h-8 text-blue-600" />
           <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         </div>
-        <p className="text-gray-600">Manage your account, users, pricing, and system configurations</p>
+        <p className="text-gray-600">Manage your account, users, communication, and system configurations</p>
       </div>
 
       {/* Settings Navigation */}
@@ -115,7 +101,7 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
             return (
               <button
                 key={section.id}
-                onClick={() => setActiveSection(section.id as 'account' | 'users' | 'pricebook' | 'communication')}
+                onClick={() => setActiveSection(section.id as 'account' | 'users' | 'communication')}
                 className={`
                   p-6 text-left transition-all duration-200 relative
                   ${isActive 

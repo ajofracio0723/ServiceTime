@@ -40,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSectio
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'pricebook', label: 'Price Book', icon: Package },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'properties', label: 'Properties', icon: PropertyIcon },
     { id: 'estimates', label: 'Estimates', icon: FileText },
@@ -59,7 +60,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSectio
   const settingsSubItems = [
     { id: 'settings-account', label: 'Account Settings', icon: User },
     { id: 'settings-users', label: 'User & Membership', icon: Users },
-    { id: 'settings-pricebook', label: 'Price Book', icon: Package },
     { id: 'settings-communication', label: 'Communication', icon: MessageSquare },
   ];
 

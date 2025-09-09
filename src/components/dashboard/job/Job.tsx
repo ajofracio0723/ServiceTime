@@ -15,8 +15,6 @@ import {
   Users,
   FileText,
   CheckSquare,
-  Camera,
-  PenTool
 } from 'lucide-react';
 import { Job as JobType } from './types';
 import { JobForm } from './JobForm';
@@ -256,19 +254,7 @@ export const Job = () => {
               <p className="text-sm text-gray-600 mb-3">{job.scope.description}</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  {job.photos.length > 0 && (
-                    <span className="flex items-center text-xs text-gray-500">
-                      <Camera className="w-3 h-3 mr-1" />
-                      {job.photos.length} photos
-                    </span>
-                  )}
-                  {job.signatures.length > 0 && (
-                    <span className="flex items-center text-xs text-gray-500">
-                      <PenTool className="w-3 h-3 mr-1" />
-                      {job.signatures.length} signatures
-                    </span>
-                  )}
-                  {job.scheduledVisits.length > 0 && (
+                  {job.scheduledVisits && job.scheduledVisits.length > 0 && (
                     <span className="flex items-center text-xs text-gray-500">
                       <Calendar className="w-3 h-3 mr-1" />
                       {job.scheduledVisits.length} visits

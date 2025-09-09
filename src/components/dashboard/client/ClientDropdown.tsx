@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
-
-interface Client {
-  id: string;
-  name: string;
-  type: 'company' | 'individual';
-  companyName?: string;
-  status: 'active' | 'inactive';
-}
+import { Client } from '../../../types/domains/Client';
 
 interface ClientDropdownProps {
   value: string;
@@ -27,9 +20,9 @@ export const ClientDropdown = ({
     // Load clients from localStorage (same as Client component)
     const savedClients = localStorage.getItem('clients');
     if (savedClients) {
-      const clientData = JSON.parse(savedClients);
+      const clientData = JSON.parse(savedClients) as Client[];
       // Filter only active clients for property assignment
-      const activeClients = clientData.filter((client: Client) => client.status === 'active');
+      const activeClients = clientData.filter((client: Client) => client.isActive);
       setClients(activeClients);
     }
   }, []);
@@ -37,10 +30,11 @@ export const ClientDropdown = ({
   const selectedClient = clients.find(client => client.id === value);
 
   const getClientDisplayName = (client: Client) => {
-    if (client.type === 'company' && client.companyName) {
-      return `${client.companyName} (${client.name})`;
+    if (client.type === 'company') {
+      return client.companyName || 'Company';
     }
-    return client.name;
+    const fullName = `${client.firstName || ''} ${client.lastName || ''}`.trim();
+    return fullName || 'Individual';
   };
 
   return (
@@ -102,3 +96,4 @@ export const ClientDropdown = ({
     </div>
   );
 };
+

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, 
-  Plus, 
   Search, 
   Filter
 } from 'lucide-react';
@@ -10,22 +9,22 @@ import {
   CalendarView, 
   VisitStatus, 
   VisitType as VisitTypeEnum, 
-  VisitFormData, 
   VisitProgress as VisitProgressType,
   RouteOptimization, 
   DailyRoute, 
   TimelineEvent, 
   LocationCoordinates 
 } from './types';
-import { mockVisits, getStatusColor, getTypeColor, getPriorityColor, filterVisits } from './visitUtils';
+import { getStatusColor, getTypeColor, getPriorityColor, filterVisits } from './visitUtils';
 import { formatTime } from './calendarUtils';
-import { visitStorage } from '../../../utils/visitStorage';
-import { VisitForm } from './VisitForm';
+// Removed visitStorage and VisitForm to eliminate CRUD in Visit module
 import { CalendarView as CalendarViewComponent } from './CalendarView';
 import { VisitProgressModal } from './VisitProgressModal';
 import { RouteManagement } from './RouteManagement';
 import { GPSTracking } from './GPSTracking';
 import { optimizeRoute } from './routeUtils';
+import { jobStorage } from '../../../utils/jobStorage';
+import type { Job } from '../job/types';
 
 interface VisitWithViewModeProps {
   activeSection: string;
@@ -59,24 +58,147 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
     type: 'month',
     currentDate: new Date()
   });
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  // Scheduling form removed; handled in Job module
   const [isProgressOpen, setIsProgressOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<VisitType | undefined>();
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
+  // No local scheduling state maintained here
 
-  // Load visits from localStorage on component mount
+  // Load visits derived from Jobs on component mount and when storage changes
   useEffect(() => {
-    const loadVisits = () => {
-      // Initialize with mock data if localStorage is empty
-      visitStorage.initializeWithMockData(mockVisits);
-      // Load all visits from storage
-      const storedVisits = visitStorage.getAll();
-      setVisits(storedVisits);
+    const loadFromJobs = () => {
+      const jobs: Job[] = jobStorage.getJobs();
+      const derived = jobs && jobs.length > 0 ? deriveVisitsFromJobs(jobs) : [];
+      setVisits(derived);
     };
-    
-    loadVisits();
+    loadFromJobs();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'servicetime_jobs') {
+        loadFromJobs();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  // Helper: derive Visit items from Job.scheduledVisits
+  const deriveVisitsFromJobs = (jobs: Job[]): VisitType[] => {
+    const parseDurationToMinutes = (dur: string | number | undefined): number => {
+      if (typeof dur === 'number') return dur;
+      if (!dur) return 120;
+      const s = dur.toLowerCase().trim();
+      const hMatch = s.match(/(\d+(?:\.\d+)?)\s*h/);
+      const mMatch = s.match(/(\d+)\s*m/);
+      if (hMatch || mMatch) {
+        const hours = hMatch ? parseFloat(hMatch[1]) : 0;
+        const mins = mMatch ? parseInt(mMatch[1], 10) : 0;
+        return Math.max(30, Math.round(hours * 60 + mins));
+      }
+      const num = parseFloat(s);
+      if (!isNaN(num)) return Math.max(30, Math.round(num));
+      return 120;
+    };
+
+    const toVisitType = (category: Job['category']): Exclude<VisitTypeEnum, 'all'> => {
+      switch (category) {
+        case 'maintenance': return 'maintenance';
+        case 'inspection': return 'inspection';
+        case 'repair': return 'repair';
+        case 'installation': return 'repair';
+        default: return 'maintenance';
+      }
+    };
+
+    const visits: VisitType[] = [];
+    jobs.forEach(job => {
+      const primaryTech = job.assignedTechnicians.find(t => t.isPrimary) || job.assignedTechnicians[0];
+      const scheduledVisits = job.scheduledVisits || [];
+      scheduledVisits.forEach(sv => {
+        const scheduledTime = sv.time || job.scheduledTime || '09:00';
+        const estimatedDuration = parseDurationToMinutes(sv.duration || job.estimatedDuration);
+        const endTime = computeEndTime(scheduledTime, estimatedDuration);
+        const v: VisitType = {
+          id: `${job.id}-${sv.id}`,
+          clientId: job.clientId,
+          clientName: job.clientName,
+          propertyId: job.propertyId,
+          propertyAddress: job.propertyAddress,
+          scheduledDate: sv.date || job.scheduledDate,
+          scheduledTime,
+          endTime,
+          status: mapScheduledVisitStatusToVisitStatus(sv.status),
+          visitType: toVisitType(job.category),
+          priority: job.priority,
+          technician: primaryTech ? primaryTech.name : 'Unassigned',
+          technicianId: primaryTech ? primaryTech.id : '',
+          estimatedDuration,
+          actualDuration: undefined,
+          notes: sv.notes || job.description || '',
+          contactPhone: '',
+          contactEmail: '',
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+          jobId: job.id,
+          progress: undefined,
+          route: undefined,
+          timeline: undefined,
+          location: undefined,
+        };
+        visits.push(v);
+      });
+      // If job has no per-visit schedules but has a job-level schedule, create a single visit from it
+      if (scheduledVisits.length === 0 && job.scheduledDate) {
+        const scheduledTime = job.scheduledTime || '09:00';
+        const estimatedDuration = parseDurationToMinutes(job.estimatedDuration);
+        const endTime = computeEndTime(scheduledTime, estimatedDuration);
+        visits.push({
+          id: `${job.id}-job-schedule`,
+          clientId: job.clientId,
+          clientName: job.clientName,
+          propertyId: job.propertyId,
+          propertyAddress: job.propertyAddress,
+          scheduledDate: job.scheduledDate,
+          scheduledTime,
+          endTime,
+          status: 'scheduled',
+          visitType: toVisitType(job.category),
+          priority: job.priority,
+          technician: primaryTech ? primaryTech.name : 'Unassigned',
+          technicianId: primaryTech ? primaryTech.id : '',
+          estimatedDuration,
+          actualDuration: undefined,
+          notes: job.description || '',
+          contactPhone: '',
+          contactEmail: '',
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+          jobId: job.id,
+          progress: undefined,
+          route: undefined,
+          timeline: undefined,
+          location: undefined,
+        });
+      }
+    });
+    return visits;
+  };
+
+  const computeEndTime = (time: string, durationMinutes: number): string => {
+    const [h, m] = time.split(':').map(Number);
+    const total = h * 60 + m + durationMinutes;
+    const hh = Math.floor(total / 60) % 24;
+    const mm = total % 60;
+    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+  };
+
+  const mapScheduledVisitStatusToVisitStatus = (s: any): Exclude<VisitStatus, 'all'> => {
+    switch (s) {
+      case 'scheduled': return 'scheduled';
+      case 'completed': return 'completed';
+      case 'cancelled': return 'cancelled';
+      case 'rescheduled': return 'scheduled';
+      default: return 'scheduled';
+    }
+  };
 
   // Route management handlers
   const handleOptimizeRoute = async (technicianId: string, date: string): Promise<RouteOptimization> => {
@@ -151,43 +273,16 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
     type: filterType
   });
 
-  const handleCreateVisit = (visitData: VisitFormData) => {
-    const newVisit = visitStorage.create(visitData);
-    setVisits(prev => [...prev, newVisit]);
-  };
+  // Removed create/update/delete handlers; scheduling is managed by Job module
 
-  const handleUpdateVisit = (visitData: VisitFormData) => {
-    if (!selectedVisit) return;
-    
-    const updatedVisit = visitStorage.update(selectedVisit.id, visitData);
-    if (updatedVisit) {
-      setVisits(prev => prev.map(visit => 
-        visit.id === selectedVisit.id ? updatedVisit : visit
-      ));
-    }
-  };
-
-  const handleDeleteVisit = (visitId: string) => {
-    if (confirm('Are you sure you want to delete this visit?')) {
-      const success = visitStorage.delete(visitId);
-      if (success) {
-        setVisits(prev => prev.filter(visit => visit.id !== visitId));
-      }
-    }
-  };
-
-  const handleDateSelect = (date: Date, time?: string) => {
-    setSelectedDate(date.toISOString().split('T')[0]);
-    setSelectedTime(time || '09:00');
+  const handleDateSelect = (_date: Date, _time?: string) => {
+    // Date selection does nothing here; scheduling is controlled in Jobs
     setSelectedVisit(undefined);
-    setIsFormOpen(true);
   };
 
   const handleVisitClick = (visit: VisitType) => {
+    // Select visit for timeline/GPS views; editing is disabled in Visit module
     setSelectedVisit(visit);
-    setSelectedDate('');
-    setSelectedTime('');
-    setIsFormOpen(true);
   };
 
   const handleProgressClick = (visit: VisitType) => {
@@ -204,23 +299,29 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
   };
 
   const handleUpdateVisitStatus = (visitId: string, status: VisitType['status']) => {
-    const updatedVisit = visitStorage.updateStatus(visitId, status);
-    if (updatedVisit) {
-      setVisits(prev => prev.map(visit => 
-        visit.id === visitId ? updatedVisit : visit
-      ));
+    setVisits(prev => prev.map(visit => 
+      visit.id === visitId ? { ...visit, status } : visit
+    ));
+    // Optionally sync terminal statuses back to job scheduled visit
+    const v = visits.find(x => x.id === visitId);
+    if (v && v.jobId && (status === 'completed' || status === 'cancelled')) {
+      const jobs = jobStorage.getJobs();
+      const idx = jobs.findIndex(j => j.id === v.jobId);
+      if (idx !== -1) {
+        const job = { ...jobs[idx] } as Job;
+        job.scheduledVisits = job.scheduledVisits.map(sv => {
+          if (`${job.id}-${sv.id}` === visitId) {
+            return { ...sv, status: status === 'completed' ? 'completed' : 'cancelled' } as any;
+          }
+          return sv;
+        });
+        jobs[idx] = job;
+        jobStorage.saveJobs(jobs);
+      }
     }
   };
 
-  const handleFormSubmit = (visitData: VisitFormData) => {
-    if (selectedVisit) {
-      handleUpdateVisit(visitData);
-    } else {
-      handleCreateVisit(visitData);
-    }
-    setIsFormOpen(false);
-    setSelectedVisit(undefined);
-  };
+  // Form submit removed
 
   return (
     <div className="space-y-6">
@@ -228,22 +329,9 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Service Visits</h2>
-          <p className="text-gray-600">Schedule and manage your service visits</p>
+          <p className="text-gray-600">Visits are generated from Job schedules. Manage scheduling in Jobs.</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => {
-              setSelectedVisit(undefined);
-              setSelectedDate('');
-              setSelectedTime('');
-              setIsFormOpen(true);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule Visit</span>
-          </button>
-        </div>
+        <div className="flex items-center space-x-3" />
       </div>
 
       {/* Search and Filters */}
@@ -304,9 +392,7 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
       {viewMode === 'list' && (
         <VisitListView 
           visits={filteredVisits}
-          onVisitClick={handleVisitClick}
           onProgressClick={handleProgressClick}
-          onDeleteVisit={handleDeleteVisit}
         />
       )}
 
@@ -340,19 +426,7 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
         </div>
       )}
 
-      {/* Visit Form Modal */}
-      <VisitForm
-        isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setSelectedVisit(undefined);
-        }}
-        onSubmit={handleFormSubmit}
-        visit={selectedVisit}
-        selectedDate={selectedDate}
-        selectedTime={selectedTime}
-        visits={visits}
-      />
+      {/* Scheduling form removed; create/edit visits in Job module */}
 
       {/* Visit Progress Modal */}
       {selectedVisit && (
@@ -374,12 +448,10 @@ export const VisitWithViewMode: React.FC<VisitWithViewModeProps> = ({ activeSect
 // List View Component
 interface VisitListViewProps {
   visits: VisitType[];
-  onVisitClick: (visit: VisitType) => void;
   onProgressClick: (visit: VisitType) => void;
-  onDeleteVisit: (visitId: string) => void;
 }
 
-const VisitListView: React.FC<VisitListViewProps> = ({ visits, onVisitClick, onProgressClick, onDeleteVisit }) => {
+const VisitListView: React.FC<VisitListViewProps> = ({ visits, onProgressClick }) => {
   
   return (
     <div className="space-y-4">
@@ -413,18 +485,7 @@ const VisitListView: React.FC<VisitListViewProps> = ({ visits, onVisitClick, onP
                   Progress
                 </button>
               )}
-              <button 
-                onClick={() => onVisitClick(visit)}
-                className="text-blue-600 hover:text-blue-900 px-3 py-1 text-sm font-medium"
-              >
-                Edit
-              </button>
-              <button 
-                onClick={() => onDeleteVisit(visit.id)}
-                className="text-red-600 hover:text-red-900 px-3 py-1 text-sm font-medium"
-              >
-                Delete
-              </button>
+              {/* Edit/Delete disabled in Visit module; manage in Jobs */}
             </div>
           </div>
 

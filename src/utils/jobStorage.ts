@@ -18,6 +18,10 @@ export const jobStorage = {
   saveJobs: (jobs: Job[]): void => {
     try {
       localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs));
+      // Notify same-tab listeners that jobs have updated
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('servicetime_jobs_updated'));
+      }
     } catch (error) {
       console.error('Error saving jobs to localStorage:', error);
     }
@@ -142,5 +146,8 @@ export const jobStorage = {
   // Clear all jobs (for development/testing)
   clearAllJobs: (): void => {
     localStorage.removeItem(JOBS_STORAGE_KEY);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('servicetime_jobs_updated'));
+    }
   }
 };

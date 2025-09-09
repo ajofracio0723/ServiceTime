@@ -1,55 +1,81 @@
 import React, { useState } from 'react';
-import { Client as ClientType } from './types';
-import { sampleClients } from './mockData';
+import { Client as DomainClient } from '../../../types/domains/Client';
+import { sampleClients } from '../../../mockData/sampleClients';
 import { ClientForm } from './ClientForm';
 import { ClientListItem } from './ClientListItem';
 
 const Client: React.FC = () => {
-  const [clients, setClients] = useState<ClientType[]>(sampleClients);
+  const [clients, setClients] = useState<DomainClient[]>(() => {
+    try {
+      const saved = localStorage.getItem('clients');
+      if (saved) return JSON.parse(saved) as DomainClient[];
+    } catch {}
+    return sampleClients;
+  });
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [currentClient, setCurrentClient] = useState<ClientType | null>(null);
+  const [currentClient, setCurrentClient] = useState<DomainClient | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleEditClient = (client: ClientType) => {
+  const handleEditClient = (client: DomainClient) => {
     setCurrentClient(client);
     setIsFormOpen(true);
   };
 
-  // Filter clients based on search term
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.includes(searchTerm) ||
-    (client.companyName && client.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter clients based on search term (company/individual fields and contacts)
+  const filteredClients = clients.filter((client) => {
+    const term = searchTerm.toLowerCase();
+    const baseMatch = (
+      (client.type === 'company' && (client.companyName || '').toLowerCase().includes(term)) ||
+      (client.type === 'individual' && (
+        `${client.firstName || ''} ${client.lastName || ''}`.toLowerCase().includes(term)
+      )) ||
+      (client.email || '').toLowerCase().includes(term) ||
+      (client.phone || '').toLowerCase().includes(term)
+    );
+    const contactsMatch = client.contacts?.some((c) =>
+      `${c.name} ${c.email || ''} ${c.phone || ''}`.toLowerCase().includes(term)
+    );
+    return baseMatch || contactsMatch;
+  });
 
-  const handleSaveClient = (clientData: Omit<ClientType, 'id'>) => {
+  const handleSaveClient = (clientData: Omit<DomainClient, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (currentClient) {
       // Update existing client
-      setClients(clients.map(c => 
-        c.id === currentClient.id ? { ...clientData, id: currentClient.id, services: c.services || [] } : c
-      ));
+      setClients((prev) =>
+        prev.map((c) =>
+          c.id === currentClient.id
+            ? {
+                ...c,
+                ...clientData,
+                updatedAt: new Date().toISOString(),
+              }
+            : c
+        )
+      );
     } else {
       // Add new client
-      const newClient: ClientType = {
+      const now = new Date().toISOString();
+      const newClient: DomainClient = {
+        id: `client-${Date.now()}`,
         ...clientData,
-        id: Date.now().toString(),
-        services: [],
-        totalJobs: 0,
-        status: 'active',
-        lastContact: new Date().toISOString(),
-        name: clientData.name || 'New Client',
-        email: clientData.email || '',
-        phone: clientData.phone || '',
-        address: clientData.address || '',
-      };
-      setClients([...clients, newClient]);
+        serviceHistory: clientData.serviceHistory || [],
+        contacts: clientData.contacts || [],
+        isActive: clientData.isActive ?? true,
+        createdAt: now,
+        updatedAt: now,
+      } as DomainClient;
+      setClients((prev) => [...prev, newClient]);
     }
     setIsFormOpen(false);
     setCurrentClient(null);
   };
 
-  const totalJobs = clients.reduce((sum, client) => sum + (client.totalJobs || 0), 0);
+  // Persist to localStorage whenever clients change
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('clients', JSON.stringify(clients));
+    } catch {}
+  }, [clients]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -57,7 +83,7 @@ const Client: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div className="mb-4 md:mb-0">
           <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
-          <p className="text-sm text-gray-500 mt-1">View and manage your clients</p>
+          <p className="text-sm text-gray-500 mt-1">Customer records: company/individual, contacts, notes, service history</p>
         </div>
         
         <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
@@ -70,7 +96,7 @@ const Client: React.FC = () => {
             <input
               type="text"
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Search clients..."
+              placeholder="Search clients by name, company, email, phone, or contact..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -89,93 +115,6 @@ const Client: React.FC = () => {
             </svg>
             Add Client
           </button>
-        </div>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Clients</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">{clients.length}</p>
-              <p className="text-xs text-green-600 font-medium mt-1 flex items-center">
-                <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 01.707.293l4 4a1 1 0 01-1.414 1.414L12 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4A1 1 0 0112 7z" clipRule="evenodd" />
-                </svg>
-                12% from last month
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-blue-50">
-              <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Active Clients</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">
-                {clients.filter(c => c.status === 'active').length}
-              </p>
-              <p className="text-xs text-green-600 font-medium mt-1 flex items-center">
-                <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 01.707.293l4 4a1 1 0 01-1.414 1.414L12 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4A1 1 0 0112 7z" clipRule="evenodd" />
-                </svg>
-                8% from last month
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-green-50">
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Jobs</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">{totalJobs}</p>
-              <p className="text-xs text-green-600 font-medium mt-1 flex items-center">
-                <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 01.707.293l4 4a1 1 0 01-1.414 1.414L12 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4A1 1 0 0112 7z" clipRule="evenodd" />
-                </svg>
-                24% from last month
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-purple-50">
-              <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">
-                ${(totalJobs * 150).toLocaleString()}
-              </p>
-              <p className="text-xs text-red-600 font-medium mt-1 flex items-center">
-                <svg className="h-3 w-3 mr-1 transform rotate-180" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 01.707.293l4 4a1 1 0 01-1.414 1.414L12 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4A1 1 0 0112 7z" clipRule="evenodd" />
-                </svg>
-                2% from last month
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-yellow-50">
-              <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
         </div>
       </div>
 
