@@ -6,8 +6,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { AccountSettings } from './AccountSettings';
-import { UserMembership } from './UserMembership';
-import { Communication } from './Communication';
+import { UserMembership } from './UserMembership/UserMembership';
+import { Communication } from './Communication/Communication';
 
 interface SettingsProps {
   section?: string;
@@ -143,3 +143,4 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
     </div>
   );
 };
+

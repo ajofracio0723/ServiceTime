@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Star, ChevronDown } from 'lucide-react';
 import { useOnboarding } from '../../../context/OnboardingContext';
 import { Plan } from '../../../types';
@@ -82,13 +82,31 @@ export const PlanSelectionStep = () => {
   const { state, dispatch } = useOnboarding();
   const { selectedPlan, businessCategory } = state.data;
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+  const LS_KEY = 'onboarding.selectedPlan';
 
   const handlePlanSelect = (plan: Plan) => {
     dispatch({
       type: 'SET_SELECTED_PLAN',
       payload: plan,
     });
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(plan));
+    } catch {}
   };
+
+  // Initialize selection from localStorage if available
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const stored: Plan = JSON.parse(raw);
+        if (!selectedPlan || stored.id !== selectedPlan.id) {
+          dispatch({ type: 'SET_SELECTED_PLAN', payload: stored });
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getRecommendedPlan = () => {
     const { technicianCount } = businessCategory;

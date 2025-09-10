@@ -16,7 +16,6 @@ import {
 import { Job, JobFormData, ChecklistItem, ScheduledVisit, AssignedTechnician, JobScope } from './types';
 import { validateJob, getFieldError, ValidationError } from '../../../utils/jobValidation';
 import { SignatureCapture } from './SignatureCapture';
-import { JobPhotosFromVisits } from './JobPhotosFromVisits';
 
 interface JobFormProps {
   isOpen: boolean;
@@ -304,7 +303,7 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
     { id: 'basic', label: 'Basic Info', icon: FileText },
     { id: 'scope', label: 'Scope', icon: AlertTriangle },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
-    { id: 'team', label: 'Team', icon: Users },
+    { id: 'team', label: 'Technicians', icon: Users },
     { id: 'checklist', label: 'Checklist', icon: CheckSquare },
     { id: 'sla', label: 'SLA', icon: Clock },
     { id: 'photos', label: 'Photos', icon: Camera },

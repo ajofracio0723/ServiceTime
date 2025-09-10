@@ -11,7 +11,7 @@ import { VisitWithViewMode } from "./visit/VisitWithViewMode";
 import { Invoice } from "./Invoice";
 import { Payment } from "./Payment";
 import { Files } from "./Files";
-import { Settings } from "./Settings";
+import { Settings } from "./settings/Settings";
 import { Notification } from "./Notification";
 import { PriceBook } from "./pricebook/PriceBook";
 import { useOnboarding } from "../../context/OnboardingContext";
