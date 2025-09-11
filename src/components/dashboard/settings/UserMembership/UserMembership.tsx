@@ -79,73 +79,7 @@ export const UserMembership: React.FC = () => {
     billingPlan: 'onboarding.selectedPlan',
   } as const;
 
-  const defaultUsers: UserProfile[] = [
-    {
-      id: '1',
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'john.smith@servicetime.com',
-      phone: '(555) 123-4567',
-      role: 'owner',
-      avatar: '/avatars/john.jpg',
-      status: 'active',
-      createdAt: '2024-01-01T00:00:00Z',
-      lastLogin: '2024-01-15T10:30:00Z',
-      permissions: ['all']
-    },
-    {
-      id: '2',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@servicetime.com',
-      phone: '(555) 234-5678',
-      role: 'admin',
-      avatar: '/avatars/sarah.jpg',
-      status: 'active',
-      createdAt: '2024-01-05T00:00:00Z',
-      lastLogin: '2024-01-15T09:15:00Z',
-      permissions: ['manage_users', 'manage_jobs', 'view_reports', 'manage_clients']
-    },
-    {
-      id: '3',
-      firstName: 'Mike',
-      lastName: 'Davis',
-      email: 'mike.davis@servicetime.com',
-      phone: '(555) 345-6789',
-      role: 'technician',
-      avatar: '/avatars/mike.jpg',
-      status: 'active',
-      createdAt: '2024-01-10T00:00:00Z',
-      lastLogin: '2024-01-15T07:45:00Z',
-      permissions: ['view_jobs', 'update_jobs', 'upload_photos']
-    },
-    {
-      id: '4',
-      firstName: 'Lisa',
-      lastName: 'Wilson',
-      email: 'lisa.wilson@servicetime.com',
-      phone: '(555) 456-7890',
-      role: 'dispatcher',
-      avatar: '/avatars/lisa.jpg',
-      status: 'inactive',
-      createdAt: '2024-01-12T00:00:00Z',
-      lastLogin: '2024-01-13T16:20:00Z',
-      permissions: ['view_jobs', 'schedule_jobs', 'manage_visits']
-    },
-    {
-      id: '5',
-      firstName: 'Robert',
-      lastName: 'Martinez',
-      email: 'robert.martinez@servicetime.com',
-      phone: '(555) 567-8901',
-      role: 'accountant',
-      avatar: '/avatars/robert.jpg',
-      status: 'active',
-      createdAt: '2024-01-08T00:00:00Z',
-      lastLogin: '2024-01-15T08:30:00Z',
-      permissions: ['view_reports', 'manage_pricing', 'manage_invoices', 'manage_payments', 'view_financial']
-    }
-  ];
+  const defaultUsers: UserProfile[] = [];
 
   const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -242,10 +176,19 @@ export const UserMembership: React.FC = () => {
       const raw = localStorage.getItem(LS.users);
       if (raw) {
         const parsed: UserProfile[] = JSON.parse(raw);
-        setUsers(parsed.map(u => ({
-          ...u,
-          assignedVehicles: normalizeVehicles((u as any).assignedVehicles)
-        })));
+        // Migration: if legacy sample users are present, clear them to avoid seat limits blocking Add
+        const looksLikeLegacySeed = Array.isArray(parsed) && parsed.length >= 5 && parsed.every(u =>
+          typeof u?.email === 'string' && u.email.endsWith('@servicetime.com')
+        );
+        if (looksLikeLegacySeed) {
+          localStorage.removeItem(LS.users);
+          setUsers([]);
+        } else {
+          setUsers(parsed.map(u => ({
+            ...u,
+            assignedVehicles: normalizeVehicles((u as any).assignedVehicles)
+          })));
+        }
       }
     } catch {}
   }, []);
