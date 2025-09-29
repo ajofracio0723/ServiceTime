@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { 
-  CreditCard, 
-  Plus, 
-  Search, 
-  DollarSign, 
-  Calendar, 
-  CheckCircle, 
+import { useEffect, useState } from 'react';
+import {
+  Search,
+  CreditCard,
+  Calendar,
+  DollarSign,
+  CheckCircle,
   Clock,
   AlertCircle,
   User,
@@ -17,25 +16,31 @@ import {
   Eye
 } from 'lucide-react';
 
-interface Payment {
-  id: string;
-  paymentNumber: string;
-  invoiceNumber: string;
-  clientName: string;
-  amount: number;
-  paymentDate: string;
-  method: 'credit_card' | 'bank_transfer' | 'cash' | 'check' | 'online';
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
-  reference: string;
-  notes: string;
-}
+import { paymentStorage, type Payment as PaymentType } from '../../../utils/paymentStorage';
+import { invoiceStorage, type Invoice } from '../../../utils/invoiceStorage';
+import { paymentService } from '../../../utils/paymentService';
+import { PaymentForm } from './PaymentForm';
+import { PaymentDetails } from './PaymentDetails';
+import { PaymentReceipt } from './PaymentReceipt';
+import { InvoiceDetails } from '../invoice/InvoiceDetails';
 
 export const Payment: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed' | 'failed' | 'refunded'>('all');
   const [filterMethod, setFilterMethod] = useState<'all' | 'credit_card' | 'bank_transfer' | 'cash' | 'check' | 'online'>('all');
+  const [payments, setPayments] = useState<PaymentType[]>([]);
+  const [recentPayment, setRecentPayment] = useState<{ id: string; paymentNumber: string } | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentType | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [formDefaults, setFormDefaults] = useState<{ invoiceId?: string; invoiceNumber: string; clientName: string; suggestedAmount: number } | null>(null);
+  const [formExisting, setFormExisting] = useState<PaymentType | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptPayment, setReceiptPayment] = useState<PaymentType | null>(null);
 
-  const mockPayments: Payment[] = [
+  const mockPayments: PaymentType[] = [
     {
       id: '1',
       paymentNumber: 'PAY-2024-001',
@@ -74,7 +79,35 @@ export const Payment: React.FC = () => {
     }
   ];
 
-  const filteredPayments = mockPayments.filter(payment => {
+  useEffect(() => {
+    const stored = paymentStorage.getPayments();
+    if (!stored || stored.length === 0) {
+      // seed once
+      for (const p of mockPayments) paymentStorage.addPayment(p);
+      setPayments(mockPayments);
+    } else {
+      setPayments(stored);
+    }
+    try {
+      const id = sessionStorage.getItem('recent_payment_id');
+      const num = sessionStorage.getItem('recent_payment_number');
+      if (id && num) {
+        setRecentPayment({ id, paymentNumber: num });
+        sessionStorage.removeItem('recent_payment_id');
+        sessionStorage.removeItem('recent_payment_number');
+      }
+      // No auto-open form; invoices create a pending payment record automatically
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (recentPayment) {
+      const el = document.getElementById(`payment-${recentPayment.id}`);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+    }
+  }, [recentPayment]);
+
+  const filteredPayments = payments.filter(payment => {
     const matchesSearch = payment.paymentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          payment.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          payment.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,13 +160,56 @@ export const Payment: React.FC = () => {
     }
   };
 
-  const totalCompleted = mockPayments
+  const totalCompleted = payments
     .filter(p => p.status === 'completed')
     .reduce((sum, p) => sum + p.amount, 0);
 
-  const totalPending = mockPayments
+  const totalPending = payments
     .filter(p => p.status === 'pending')
     .reduce((sum, p) => sum + p.amount, 0);
+
+  const openView = (p: PaymentType) => {
+    setSelectedPayment(p);
+    setShowDetails(true);
+  };
+
+  const openEdit = (p: PaymentType) => {
+    setFormExisting(p);
+    setFormDefaults(null);
+    setShowForm(true);
+  };
+
+  // Removed openCreate - payments are auto-generated from invoices
+
+  const handleDelete = async (p: PaymentType) => {
+    const ok = window.confirm(`Delete ${p.paymentNumber}? This will also update the related invoice balance. This cannot be undone.`);
+    if (!ok) return;
+    
+    const result = await paymentService.deletePayment(p.id);
+    if (result.success) {
+      setPayments(prev => prev.filter(x => x.id !== p.id));
+    } else {
+      window.alert(`Failed to delete payment: ${result.error}`);
+    }
+  };
+
+  // Removed manual status update functions - payments auto-update from client payment links
+
+  const openInvoice = (p: PaymentType) => {
+    try {
+      const all = invoiceStorage.getInvoices();
+      const inv = all.find(i => i.invoiceNumber === p.invoiceNumber) || null;
+      if (!inv) {
+        window.alert(`Invoice ${p.invoiceNumber} not found.`);
+        return;
+      }
+      setSelectedInvoice(inv);
+      setShowInvoice(true);
+    } catch (e) {
+      console.error('Failed to load invoice', e);
+      window.alert('Failed to load invoice');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -143,10 +219,9 @@ export const Payment: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Payments</h2>
           <p className="text-gray-600">Track and manage all payment transactions</p>
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2">
-          <Plus className="w-4 h-4" />
-          <span>Record Payment</span>
-        </button>
+        <div className="text-sm text-gray-500">
+          Payments are automatically generated from invoices
+        </div>
       </div>
 
       {/* Payment Summary */}
@@ -180,7 +255,7 @@ export const Payment: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Transactions</p>
-              <p className="text-2xl font-bold text-gray-900">{mockPayments.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{payments.length}</p>
             </div>
           </div>
         </div>
@@ -226,7 +301,14 @@ export const Payment: React.FC = () => {
       {/* Payments List */}
       <div className="space-y-4">
         {filteredPayments.map((payment) => (
-          <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+          <div
+            key={payment.id}
+            id={`payment-${payment.id}`}
+            className={
+              "bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow " +
+              (recentPayment && recentPayment.id === payment.id ? "border-green-400 ring-2 ring-green-200" : "border-gray-200")
+            }
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getStatusColor(payment.status)}`}>
@@ -249,16 +331,16 @@ export const Payment: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <button className="text-blue-600 hover:text-blue-900">
+                <button onClick={() => openView(payment)} className="text-blue-600 hover:text-blue-900">
                   <Eye className="w-4 h-4" />
                 </button>
-                <button className="text-blue-600 hover:text-blue-900">
+                <button onClick={() => openEdit(payment)} className="text-blue-600 hover:text-blue-900">
                   <Edit className="w-4 h-4" />
                 </button>
                 <button className="text-green-600 hover:text-green-900">
                   <Download className="w-4 h-4" />
                 </button>
-                <button className="text-red-600 hover:text-red-900">
+                <button onClick={() => handleDelete(payment)} className="text-red-600 hover:text-red-900">
                   <Trash2 className="w-4 h-4" />
                 </button>
                 <button className="text-gray-400 hover:text-gray-600">
@@ -294,30 +376,31 @@ export const Payment: React.FC = () => {
             </div>
 
             <div className="border-t border-gray-200 pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-2">
-                  <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                  <button onClick={() => openView(payment)} className="text-blue-600 hover:text-blue-900 text-sm font-medium">
                     View Details
                   </button>
-                  <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                  <button onClick={() => openInvoice(payment)} className="text-blue-600 hover:text-blue-900 text-sm font-medium">
                     View Invoice
                   </button>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {payment.status === 'pending' && (
-                    <button className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                      Mark Complete
-                    </button>
-                  )}
                   {payment.status === 'completed' && (
-                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                    <button 
+                      onClick={() => {
+                        setReceiptPayment(payment);
+                        setShowReceipt(true);
+                      }}
+                      className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                    >
                       Send Receipt
                     </button>
                   )}
-                  {payment.status === 'failed' && (
-                    <button className="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700">
-                      Retry Payment
-                    </button>
+                  {(payment.status === 'pending' || payment.status === 'failed') && (
+                    <div className="text-sm text-gray-500 italic">
+                      Status updates automatically from client payment
+                    </div>
                   )}
                 </div>
               </div>
@@ -334,6 +417,37 @@ export const Payment: React.FC = () => {
           <p className="text-gray-600">Try adjusting your search or filter criteria.</p>
         </div>
       )}
+
+      {/* Modals - Only for editing existing payments */}
+      {formExisting && (
+        <PaymentForm
+          isOpen={showForm}
+          onClose={() => setShowForm(false)}
+          onSubmit={() => {
+            // Refresh payments list after edit
+            const updatedPayments = paymentStorage.getPayments();
+            setPayments(updatedPayments);
+          }}
+          defaults={formDefaults}
+          existing={formExisting}
+        />
+      )}
+      <PaymentDetails
+        isOpen={showDetails}
+        payment={selectedPayment}
+        onClose={() => setShowDetails(false)}
+      />
+      <InvoiceDetails
+        isOpen={showInvoice}
+        invoice={selectedInvoice}
+        onClose={() => setShowInvoice(false)}
+      />
+      <PaymentReceipt
+        isOpen={showReceipt}
+        payment={receiptPayment}
+        onClose={() => setShowReceipt(false)}
+      />
     </div>
   );
-};
+}
+;

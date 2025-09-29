@@ -1,52 +1,96 @@
-import { createContext, useContext, useReducer, ReactNode } from "react";
+import { createContext, useContext, useReducer, ReactNode, useEffect } from "react";
+import { authApi } from "../services/authApi";
 
 interface User {
   id: string;
+  account_id: string;
   email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  status: string;
+  email_verified: boolean;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Account {
+  id: string;
   name: string;
+  business_type?: string;
+  subscription_plan: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
+  account: Account | null;
   isLoading: boolean;
   isNewUser: boolean;
+  otpSent: boolean;
+  otpEmail: string;
 }
 
 type AuthAction =
   | { type: "LOGIN_START" }
-  | { type: "LOGIN_SUCCESS"; payload: { user: User; isNewUser: boolean } }
+  | { type: "OTP_SENT"; payload: { email: string } }
+  | { type: "LOGIN_SUCCESS"; payload: { user: User; account: Account; isNewUser: boolean } }
   | { type: "LOGIN_FAILURE" }
-  | { type: "LOGOUT" };
+  | { type: "LOGOUT" }
+  | { type: "INIT_AUTH" };
 
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
+  account: null,
   isLoading: false,
   isNewUser: false,
+  otpSent: false,
+  otpEmail: '',
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "LOGIN_START":
-      return { ...state, isLoading: true };
+      return { ...state, isLoading: true, otpSent: false };
+    case "OTP_SENT":
+      return { ...state, isLoading: false, otpSent: true, otpEmail: action.payload.email };
     case "LOGIN_SUCCESS":
       return {
         ...state,
         isAuthenticated: true,
         user: action.payload.user,
+        account: action.payload.account,
         isNewUser: action.payload.isNewUser,
         isLoading: false,
+        otpSent: false,
+        otpEmail: '',
       };
     case "LOGIN_FAILURE":
       return {
         ...state,
         isAuthenticated: false,
         user: null,
+        account: null,
         isLoading: false,
+        otpSent: false,
+        otpEmail: '',
       };
     case "LOGOUT":
       return initialState;
+    case "INIT_AUTH":
+      const user = authApi.getCurrentUser();
+      const account = authApi.getCurrentAccount();
+      return {
+        ...state,
+        isAuthenticated: authApi.isAuthenticated(),
+        user,
+        account,
+      };
     default:
       return state;
   }
@@ -54,64 +98,125 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 const AuthContext = createContext<{
   state: AuthState;
-  login: (email: string) => Promise<void>;
-  signup: () => Promise<void>;
+  sendLoginOTP: (email: string) => Promise<{ success: boolean; message: string }>;
+  sendSignupOTP: (email: string) => Promise<{ success: boolean; message: string }>;
+  verifyLoginOTP: (email: string, otp: string) => Promise<{ success: boolean; message: string }>;
+  completeSignup: (email: string, otp: string, signupData: any) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
 } | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  const login = async (email: string) => {
+  // Initialize auth state on mount
+  useEffect(() => {
+    dispatch({ type: "INIT_AUTH" });
+  }, []);
+
+  const sendLoginOTP = async (email: string) => {
     dispatch({ type: "LOGIN_START" });
-
+    
     try {
-      // Simulate passwordless login - send magic link via email
-      // In a real implementation, this would send an email with a secure login link
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Longer delay to simulate email sending
-
-      // Mock successful passwordless login - always succeeds for prototype
-      const user: User = {
-        id: "1",
-        email,
-        name: email.split("@")[0], // Use email prefix as name for demo
-      };
-
-      // Set isNewUser to false so existing users go directly to dashboard
-      dispatch({ type: "LOGIN_SUCCESS", payload: { user, isNewUser: false } });
+      const result = await authApi.sendLoginOTP(email);
+      
+      if (result.success) {
+        dispatch({ type: "OTP_SENT", payload: { email } });
+      } else {
+        dispatch({ type: "LOGIN_FAILURE" });
+      }
+      
+      return result;
     } catch (error) {
       dispatch({ type: "LOGIN_FAILURE" });
-      throw error;
+      return { success: false, message: 'Network error occurred' };
     }
   };
 
-  const signup = async () => {
+  const sendSignupOTP = async (email: string) => {
     dispatch({ type: "LOGIN_START" });
-
+    
     try {
-      // Simulate API call for signup - replace with actual signup logic
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock successful signup - create new user
-      const user: User = {
-        id: "2",
-        email: "newuser@example.com",
-        name: "New User",
-      };
-
-      dispatch({ type: "LOGIN_SUCCESS", payload: { user, isNewUser: true } });
+      const result = await authApi.sendSignupOTP(email);
+      
+      if (result.success) {
+        dispatch({ type: "OTP_SENT", payload: { email } });
+      } else {
+        dispatch({ type: "LOGIN_FAILURE" });
+      }
+      
+      return result;
     } catch (error) {
       dispatch({ type: "LOGIN_FAILURE" });
-      throw error;
+      return { success: false, message: 'Network error occurred' };
+    }
+  };
+
+  const verifyLoginOTP = async (email: string, otp: string) => {
+    dispatch({ type: "LOGIN_START" });
+    
+    try {
+      const result = await authApi.verifyLoginOTP(email, otp);
+      
+      if (result.success && result.user && result.account) {
+        dispatch({ 
+          type: "LOGIN_SUCCESS", 
+          payload: { 
+            user: result.user, 
+            account: result.account, 
+            isNewUser: false 
+          } 
+        });
+      } else {
+        dispatch({ type: "LOGIN_FAILURE" });
+      }
+      
+      return result;
+    } catch (error) {
+      dispatch({ type: "LOGIN_FAILURE" });
+      return { success: false, message: 'Network error occurred' };
+    }
+  };
+
+  const completeSignup = async (email: string, otp: string, signupData: any) => {
+    dispatch({ type: "LOGIN_START" });
+    
+    try {
+      const result = await authApi.completeSignup(email, otp, signupData);
+      
+      if (result.success && result.user && result.account) {
+        dispatch({ 
+          type: "LOGIN_SUCCESS", 
+          payload: { 
+            user: result.user, 
+            account: result.account, 
+            isNewUser: true 
+          } 
+        });
+      } else {
+        dispatch({ type: "LOGIN_FAILURE" });
+      }
+      
+      return result;
+    } catch (error) {
+      dispatch({ type: "LOGIN_FAILURE" });
+      return { success: false, message: 'Network error occurred' };
     }
   };
 
   const logout = () => {
+    authApi.logout();
     dispatch({ type: "LOGOUT" });
   };
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, logout }}>
+    <AuthContext.Provider value={{ 
+      state, 
+      sendLoginOTP, 
+      sendSignupOTP, 
+      verifyLoginOTP, 
+      completeSignup, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

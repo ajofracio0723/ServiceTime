@@ -50,7 +50,7 @@ export const Settings: React.FC<SettingsProps> = ({ section = 'account' }) => {
       id: 'account', 
       label: 'Account Settings', 
       icon: User, 
-      description: 'Personal information, business details, notifications, security, and billing'
+      description: 'Personal information, business details, notifications, and security'
     },
     { 
       id: 'users', 

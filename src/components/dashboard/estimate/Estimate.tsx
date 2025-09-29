@@ -14,7 +14,8 @@ import {
   Send,
   Eye,
   TrendingUp,
-  Archive
+  Archive,
+  Briefcase
 } from 'lucide-react';
 import { EstimateForm } from './EstimateForm';
 import { EstimatePreview } from './EstimatePreview';
@@ -23,6 +24,10 @@ import { Client } from '../../../types/domains/Client';
 import { Property } from '../../../types/domains/Property';
 import { getEstimateStatusColor, isEstimateExpired } from '../../../utils/estimateValidation';
 import { sampleEstimates } from '../../../mockData/sampleEstimates';
+import { validateEstimateForConversion } from '../../../utils/estimateToJobConverter';
+import { jobStorage } from '../../../utils/jobStorage';
+import { JobForm } from '../job/JobForm';
+import { Job } from '../job/types';
 
 export const Estimate = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +38,8 @@ export const Estimate = () => {
   const [estimates, setEstimates] = useState<EstimateType[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [isJobFormOpen, setIsJobFormOpen] = useState(false);
+  const [jobFormPrefilledData, setJobFormPrefilledData] = useState<any>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -40,7 +47,13 @@ export const Estimate = () => {
       // Estimates
       const savedEstimates = localStorage.getItem('estimates');
       if (savedEstimates) {
-        setEstimates(JSON.parse(savedEstimates) as EstimateType[]);
+        const parsedEstimates = JSON.parse(savedEstimates);
+        if (Array.isArray(parsedEstimates)) {
+          setEstimates(parsedEstimates as EstimateType[]);
+        } else {
+          console.warn('Invalid estimates data in localStorage, using sample data');
+          setEstimates(sampleEstimates);
+        }
       } else {
         setEstimates(sampleEstimates);
       }
@@ -48,15 +61,54 @@ export const Estimate = () => {
       // Clients (shared with Client module)
       const savedClients = localStorage.getItem('clients');
       if (savedClients) {
-        setClients(JSON.parse(savedClients) as Client[]);
+        const parsedClients = JSON.parse(savedClients);
+        if (Array.isArray(parsedClients)) {
+          setClients(parsedClients as Client[]);
+        }
       }
 
       // Properties (shared with Property module)
       const savedProps = localStorage.getItem('properties');
       if (savedProps) {
-        setProperties(JSON.parse(savedProps) as Property[]);
+        const parsedProperties = JSON.parse(savedProps);
+        if (Array.isArray(parsedProperties)) {
+          setProperties(parsedProperties as Property[]);
+        }
+      } else {
+        // Create minimal sample property for testing
+        const sampleProperty: Property = {
+          id: 'prop-001',
+          name: 'Main Office Building',
+          clientId: 'client-001',
+          address: {
+            street: '123 Main St',
+            city: 'Anytown',
+            state: 'CA',
+            zipCode: '12345',
+            country: 'USA'
+          },
+          geoLocation: { latitude: 40.7128, longitude: -74.0060 },
+          propertyType: 'commercial',
+          accessNotes: {
+            gateCode: '1234',
+            keyLocation: 'Under the mat',
+            emergencyContact: {
+              name: 'John Smith',
+              phone: '(555) 123-4567'
+            },
+            parkingInstructions: 'Park in visitor spots',
+            specialInstructions: 'Ring doorbell twice'
+          },
+          linkedEquipment: [],
+          photos: [],
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setProperties([sampleProperty]);
       }
-    } catch (e) {
+    } catch (error) {
+      console.error('Error loading data from localStorage:', error);
       // Fallback to sample estimates only
       setEstimates(sampleEstimates);
     }
@@ -65,8 +117,12 @@ export const Estimate = () => {
   // Persist estimates to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('estimates', JSON.stringify(estimates));
-    } catch {}
+      if (estimates.length > 0) {
+        localStorage.setItem('estimates', JSON.stringify(estimates));
+      }
+    } catch (error) {
+      console.error('Error saving estimates to localStorage:', error);
+    }
   }, [estimates]);
 
   const handleSaveEstimate = (estimateData: Partial<EstimateType>) => {
@@ -129,6 +185,155 @@ export const Estimate = () => {
   const handleEditEstimate = (estimate: EstimateType) => {
     setSelectedEstimate(estimate);
     setIsFormOpen(true);
+  };
+
+  const handleSendEstimate = (estimate: EstimateType) => {
+    try {
+      // Update estimate status to sent
+      const updatedEstimate = {
+        ...estimate,
+        status: 'sent' as EstimateStatus,
+        sentAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      setEstimates(prev => prev.map(est => 
+        est.id === estimate.id ? updatedEstimate : est
+      ));
+
+      alert(`Estimate sent successfully!\nEstimate Number: ${estimate.estimateNumber}\n\nThe client will receive the estimate via email.`);
+    } catch (error) {
+      console.error('Error sending estimate:', error);
+      alert('Failed to send estimate. Please try again.');
+    }
+  };
+
+  const handleMarkApproved = (estimate: EstimateType) => {
+    try {
+      // Update estimate status to approved
+      const updatedEstimate = {
+        ...estimate,
+        status: 'approved' as EstimateStatus,
+        approvedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        clientApproval: {
+          ...estimate.clientApproval,
+          isApproved: true,
+          approvedAt: new Date().toISOString(),
+          approvedBy: 'Client' // In real app, this would come from the client
+        }
+      };
+
+      setEstimates(prev => prev.map(est => 
+        est.id === estimate.id ? updatedEstimate : est
+      ));
+
+      alert(`Estimate approved!\nEstimate Number: ${estimate.estimateNumber}\n\nYou can now create a job from this estimate.`);
+    } catch (error) {
+      console.error('Error approving estimate:', error);
+      alert('Failed to approve estimate. Please try again.');
+    }
+  };
+
+  const handleCreateJob = (estimate: EstimateType) => {
+    try {
+      // Validate estimate for conversion
+      const validationErrors = validateEstimateForConversion(estimate);
+      if (validationErrors.length > 0) {
+        alert(`Cannot create job:\n${validationErrors.join('\n')}`);
+        return;
+      }
+
+      // Find client and property data
+      const client = clients.find(c => c.id === estimate.clientId);
+      const property = properties.find(p => p.id === estimate.propertyId);
+
+      if (!client || !property) {
+        alert('Missing client or property information. Cannot create job.');
+        return;
+      }
+
+      // Prepare pre-filled data for JobForm
+      const clientName = client.type === 'company' ? (client.companyName || '') : `${client.firstName || ''} ${client.lastName || ''}`.trim();
+      const propertyAddress = property.address ? `${property.address.street || ''}, ${property.address.city || ''}`.trim() : '';
+      
+      // Determine job category based on estimate items
+      const categories = estimate.items.map(item => item.category).filter(Boolean);
+      const primaryCategory = categories.length > 0 ? categories[0] : 'maintenance';
+      
+      const prefilledData = {
+        title: `${estimate.title} (From Estimate ${estimate.estimateNumber})`,
+        clientId: estimate.clientId,
+        clientName,
+        propertyId: estimate.propertyId,
+        propertyAddress,
+        estimateId: estimate.id,
+        description: `Job created from approved estimate ${estimate.estimateNumber}. ${estimate.description}`,
+        category: primaryCategory === 'hvac' ? 'hvac' : 
+                 primaryCategory === 'plumbing' ? 'plumbing' : 
+                 primaryCategory === 'electrical' ? 'electrical' : 'maintenance',
+        scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        estimatedDuration: `${Math.ceil(estimate.items.reduce((total, item) => total + (item.quantity * 1), 0))}h`,
+        priority: 'medium' as const,
+        estimatedCost: estimate.total,
+        scope: {
+          description: estimate.description,
+          objectives: [
+            `Complete work as outlined in estimate ${estimate.estimateNumber}`,
+            `Deliver all services and materials as specified`,
+            `Ensure client satisfaction and quality standards`
+          ],
+          deliverables: estimate.items.map(item => 
+            `${item.name} - ${item.description || 'Complete as specified'} (Qty: ${item.quantity})`
+          ),
+          requirements: [],
+          safetyNotes: []
+        },
+        checklist: estimate.items.map((item, index) => ({
+          id: `checklist-${index + 1}`,
+          task: `${item.name} - ${item.description || 'Complete task'}`,
+          completed: false
+        })),
+        internalNotes: `Created from estimate ${estimate.estimateNumber}. ${estimate.internalNotes || ''}`,
+        clientNotes: estimate.notes || `Work to be completed as per estimate ${estimate.estimateNumber}`
+      };
+
+      setJobFormPrefilledData(prefilledData);
+      setIsJobFormOpen(true);
+    } catch (error) {
+      console.error('Error preparing job form:', error);
+      alert('Failed to open job form. Please try again.');
+    }
+  };
+
+  const handleJobFormSubmit = (job: Job) => {
+    // Save the job using jobStorage
+    jobStorage.addJob(job);
+
+    // Update the estimate status to converted
+    if (jobFormPrefilledData?.estimateId) {
+      const updatedEstimate = estimates.find(est => est.id === jobFormPrefilledData.estimateId);
+      if (updatedEstimate) {
+        const convertedEstimate = {
+          ...updatedEstimate,
+          status: 'converted' as EstimateStatus,
+          convertedToJobAt: new Date().toISOString(),
+          jobId: job.id,
+          updatedAt: new Date().toISOString()
+        };
+
+        setEstimates(prev => prev.map(est => 
+          est.id === jobFormPrefilledData.estimateId ? convertedEstimate : est
+        ));
+      }
+    }
+
+    // Close the job form
+    setIsJobFormOpen(false);
+    setJobFormPrefilledData(null);
+
+    // Show success message
+    alert(`✅ Job Created Successfully!\n\nJob Number: ${job.jobNumber}\nTitle: ${job.title}\nClient: ${job.clientName}\nScheduled: ${new Date(job.scheduledDate).toLocaleDateString()}\n\nThe job has been created and is now available in the Jobs module.`);
   };
 
   const filteredEstimates = estimates.filter((estimate: EstimateType) => {
@@ -213,8 +418,8 @@ export const Estimate = () => {
         {filteredEstimates.map((estimate) => {
           const client = clients.find(c => c.id === estimate.clientId);
           const property = properties.find(p => p.id === estimate.propertyId);
-          const clientName = client?.type === 'company' ? client.companyName : `${client?.firstName || ''} ${client?.lastName || ''}`.trim();
-          const isExpired = estimate.terms?.validUntil ? isEstimateExpired(estimate as any) : false;
+          const clientName = client?.type === 'company' ? (client.companyName || '') : `${client?.firstName || ''} ${client?.lastName || ''}`.trim();
+          const isExpired = estimate.terms?.validUntil ? isEstimateExpired(estimate) : false;
           
           return (
             <div key={estimate.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -240,6 +445,12 @@ export const Estimate = () => {
                       </span>
                       {isExpired && (
                         <span className="text-red-600 font-medium">EXPIRED</span>
+                      )}
+                      {estimate.status === 'converted' && estimate.jobId && (
+                        <span className="flex items-center text-purple-600 font-medium">
+                          <Briefcase className="w-4 h-4 mr-1" />
+                          Job Created
+                        </span>
                       )}
                     </div>
                   </div>
@@ -271,7 +482,7 @@ export const Estimate = () => {
                   <div className="flex items-center text-sm text-gray-600">
                     <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                     <span className="truncate">
-                      {property ? `${property.address?.street || ''}, ${property.address?.city || ''}` : 'Unknown Property'}
+                      {property?.address ? `${property.address.street || ''}, ${property.address.city || ''}`.trim() || 'Unknown Property' : 'Unknown Property'}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600">
@@ -344,15 +555,35 @@ export const Estimate = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     {estimate.status === 'draft' && (
-                      <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center">
+                      <button 
+                        onClick={() => handleSendEstimate(estimate)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center"
+                      >
                         <Send className="w-4 h-4 mr-1" />
                         Send Estimate
                       </button>
                     )}
                     {estimate.status === 'sent' && (
-                      <button className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                      <button 
+                        onClick={() => handleMarkApproved(estimate)}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                      >
                         Mark Approved
                       </button>
+                    )}
+                    {estimate.status === 'approved' && !estimate.jobId && (
+                      <button 
+                        onClick={() => handleCreateJob(estimate)}
+                        className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 flex items-center"
+                      >
+                        <Briefcase className="w-4 h-4 mr-1" />
+                        Create Job
+                      </button>
+                    )}
+                    {estimate.status === 'converted' && estimate.jobId && (
+                      <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded">
+                        Job Created
+                      </div>
                     )}
                   </div>
                 </div>
@@ -384,10 +615,13 @@ export const Estimate = () => {
         properties={properties}
       />
 
-      {selectedEstimate && (() => {
+      {selectedEstimate && isPreviewOpen && (() => {
         const client = clients.find(c => c.id === selectedEstimate.clientId);
         const property = properties.find(p => p.id === selectedEstimate.propertyId);
-        if (!client || !property) return null;
+        if (!client || !property) {
+          console.warn('Missing client or property data for estimate preview');
+          return null;
+        }
         return (
           <EstimatePreview
             isOpen={isPreviewOpen}
@@ -403,6 +637,17 @@ export const Estimate = () => {
           />
         );
       })()}
+
+      {/* Job Form Modal */}
+      <JobForm
+        isOpen={isJobFormOpen}
+        onClose={() => {
+          setIsJobFormOpen(false);
+          setJobFormPrefilledData(null);
+        }}
+        onSubmit={handleJobFormSubmit}
+        prefilledData={jobFormPrefilledData}
+      />
     </div>
   );
 };

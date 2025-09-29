@@ -397,20 +397,20 @@ export const UserMembership: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-col sm:flex-row sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">User & Role Management</h2>
           <p className="text-gray-600">Add users to your team and assign roles based on your company membership</p>
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2" onClick={openAdd} disabled={remainingSeats === 0 && companyMembership.limits.maxUsers !== -1}>
+        <button className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" onClick={openAdd} disabled={remainingSeats === 0 && companyMembership.limits.maxUsers !== -1}>
           <UserPlus className="w-4 h-4" />
           <span>Add Employee</span>
         </button>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-stretch sm:items-center gap-3 sm:gap-4 flex-col sm:flex-row">
+        <div className="relative w-full sm:flex-1 sm:max-w-md">
           <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
           <input
             type="text"
@@ -420,7 +420,7 @@ export const UserMembership: React.FC = () => {
             className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
           <Filter className="w-4 h-4" />
           <span>Filter</span>
         </button>
@@ -428,7 +428,7 @@ export const UserMembership: React.FC = () => {
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex gap-4 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -455,17 +455,17 @@ export const UserMembership: React.FC = () => {
 
       {/* Add User Modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-8 space-y-6 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-3 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-5 sm:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">Add Team Member</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Add Employee</h3>
               <p className="text-sm text-gray-500 mt-1">Create a new employee profile with role-based access.</p>
             </div>
 
             {/* Basic Info */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-gray-900">Basic Information</h4>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">First Name <span className="text-red-500">*</span></label>
                   <div className="relative">
@@ -486,7 +486,7 @@ export const UserMembership: React.FC = () => {
             {/* Contact */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-gray-900">Contact</h4>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
                   <div className="relative">
@@ -508,7 +508,7 @@ export const UserMembership: React.FC = () => {
             {/* Role & Status */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-gray-900">Role & Status</h4>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">Role</label>
                   <select className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={newUser.role} onChange={(e)=>setNewUser({...newUser, role: e.target.value as UserProfile['role'], permissionsMap: defaultPermsForRole(e.target.value as UserProfile['role'])})}>
@@ -532,7 +532,7 @@ export const UserMembership: React.FC = () => {
             {/* Availability */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400"/>Availability</h4>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">Working Days</label>
                   <div className="flex flex-wrap gap-2">
@@ -652,7 +652,7 @@ export const UserMembership: React.FC = () => {
               <h4 className="text-sm font-medium text-gray-900 mb-2">Module Permissions</h4>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-64 overflow-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-xs sm:text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-700">
                       <th className="text-left p-2">Module</th>

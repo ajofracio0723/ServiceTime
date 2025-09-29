@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Lock, Phone, Upload } from 'lucide-react';
+import { User, Mail, Phone, Upload } from 'lucide-react';
 import { useOnboarding } from '../../../context/OnboardingContext';
-import { validateEmail, validatePassword, validateRequired, validatePhone } from '../../../utils/validation';
+import { validateEmail, validateRequired, validatePhone } from '../../../utils/validation';
 
 export const PersonalInfoStep = () => {
   const { state, dispatch } = useOnboarding();
@@ -31,9 +31,6 @@ export const PersonalInfoStep = () => {
     if (!validateEmail(personalInfo.email)) {
       newErrors.email = 'Valid email is required';
     }
-    if (!validatePassword(personalInfo.password)) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
     if (!validatePhone(personalInfo.phone)) {
       newErrors.phone = 'Valid phone number is required';
     }
@@ -52,7 +49,7 @@ export const PersonalInfoStep = () => {
     <div className="space-y-6">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Personal Information</h2>
-        <p className="text-gray-600">Let's start with your basic details</p>
+        <p className="text-gray-600">Let's start with your basic details. We'll use passwordless authentication for secure access.</p>
       </div>
 
       <div className="space-y-4">
@@ -90,22 +87,6 @@ export const PersonalInfoStep = () => {
           {showValidationErrors && errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Lock className="inline w-4 h-4 mr-2" />
-            Password
-          </label>
-          <input
-            type="password"
-            value={personalInfo.password}
-            onChange={(e) => handleChange('password', e.target.value)}
-            className={`w-full px-4 py-3 border-2 rounded-xl bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 hover:bg-white hover:shadow-sm ${
-              showValidationErrors && errors.password ? 'border-red-400 bg-red-50' : 'border-gray-200'
-            }`}
-            placeholder="Create a secure password"
-          />
-          {showValidationErrors && errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

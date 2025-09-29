@@ -16,15 +16,18 @@ import {
 import { Job, JobFormData, ChecklistItem, ScheduledVisit, AssignedTechnician, JobScope } from './types';
 import { validateJob, getFieldError, ValidationError } from '../../../utils/jobValidation';
 import { SignatureCapture } from './SignatureCapture';
+import { PhotoManager } from './PhotoManager';
+import { fileStorage } from '../../../utils/fileStorage';
 
 interface JobFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (job: Job) => void;
   editingJob?: Job | null;
+  prefilledData?: Partial<JobFormData>;
 }
 
-export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, editingJob }) => {
+export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, editingJob, prefilledData }) => {
   const [activeTab, setActiveTab] = useState('basic');
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
@@ -64,6 +67,7 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
       escalationContacts: []
     },
     signatures: [],
+    photos: [],
     internalNotes: '',
     clientNotes: ''
   });
@@ -94,9 +98,16 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
         checklist: editingJob.checklist,
         sla: editingJob.sla,
         signatures: editingJob.signatures,
+        photos: editingJob.photos || [],
         internalNotes: editingJob.internalNotes || '',
         clientNotes: editingJob.clientNotes || ''
       });
+    } else if (prefilledData) {
+      // Pre-fill form with data from estimate
+      setFormData(prev => ({
+        ...prev,
+        ...prefilledData
+      }));
     } else {
       // Reset form for new job
       setFormData({
@@ -134,15 +145,21 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
           escalationContacts: []
         },
           signatures: [],
+          photos: [],
         internalNotes: '',
         clientNotes: ''
       });
     }
     setValidationErrors([]);
     setShowValidationErrors(false);
-  }, [editingJob, isOpen]);
+  }, [editingJob, prefilledData, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const errors = validateJob(formData);
@@ -164,6 +181,39 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
       updatedBy: 'current_user',
       completedAt: editingJob?.completedAt
     };
+
+    // Persist files to Files storage (images + signatures)
+    try {
+      const photoSaves = (formData.photos || []).map(async (p) => {
+        try {
+          const blob = await dataUrlToBlob(p.url);
+          await fileStorage.createFromBlob(blob, {
+            category: 'photo',
+            originalName: p.filename,
+            relatedEntityType: 'job',
+            relatedEntityId: jobData.id,
+            tags: [p.category, 'job', jobData.jobNumber],
+            isPublic: false,
+          });
+        } catch {}
+      });
+
+      const signatureSaves = (formData.signatures || []).map(async (s) => {
+        try {
+          const blob = await dataUrlToBlob(s.signatureData);
+          await fileStorage.createFromBlob(blob, {
+            category: 'signature',
+            originalName: `${s.type}-signature-${jobData.jobNumber}.png`,
+            relatedEntityType: 'job',
+            relatedEntityId: jobData.id,
+            tags: ['signature', s.type, 'job', jobData.jobNumber],
+            isPublic: false,
+          });
+        } catch {}
+      });
+
+      await Promise.all([...photoSaves, ...signatureSaves]);
+    } catch {}
 
     onSubmit(jobData);
     onClose();
@@ -945,14 +995,11 @@ export const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, edi
 
             {/* Signatures Tab */}
             {activeTab === 'signatures' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Digital Signatures</h3>
-                  <SignatureCapture
-                    signatures={formData.signatures}
-                    onSignaturesChange={(signatures) => setFormData(prev => ({ ...prev, signatures }))}
-                  />
-                </div>
+              <div className="space-y-4">
+                <SignatureCapture
+                  signatures={formData.signatures}
+                  onSignaturesChange={(signatures) => setFormData(prev => ({ ...prev, signatures }))}
+                />
               </div>
             )}
           </div>

@@ -104,6 +104,7 @@ export interface Job {
   
   // Documentation
   signatures: JobSignature[];
+  photos?: JobPhoto[];
   
   // Metadata
   createdAt: string;

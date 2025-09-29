@@ -123,31 +123,31 @@ export const JobDetails: React.FC<JobDetailsProps> = ({ job, isOpen, onClose, on
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
               onClick={() => onEdit(job)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto justify-center"
             >
               <Edit className="w-4 h-4" />
               <span>Edit Job</span>
             </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 w-full sm:w-auto flex items-center justify-center px-3 py-2 border border-gray-200 rounded-lg">
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        <div className="flex" style={{ height: 'calc(90vh - 120px)' }}>
+        <div className="flex flex-col md:flex-row" style={{ height: 'calc(90vh - 120px)' }}>
           {/* Sidebar Navigation */}
-          <div className="w-64 bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto">
-            <nav className="space-y-2">
+          <div className="w-full md:w-64 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 p-4 overflow-x-auto md:overflow-y-auto">
+            <nav className="space-y-2 md:space-y-2 flex md:block gap-2">
               {sections.map((section) => {
                 const Icon = section.icon;
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg ${
+                    className={`flex-shrink-0 md:shrink w-auto md:w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg ${
                       activeSection === section.id
                         ? 'bg-blue-100 text-blue-700'
                         : 'text-gray-600 hover:bg-gray-100'

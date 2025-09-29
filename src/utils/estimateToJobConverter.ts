@@ -1,10 +1,12 @@
 import { Estimate } from '../types/domains/Estimate';
-import { Job } from '../types/domains/Job';
+import { Job } from '../components/dashboard/job/types';
+import { Client } from '../types/domains/Client';
+import { Property } from '../types/domains/Property';
 
 export interface JobConversionOptions {
   scheduledDate?: string;
   assignedTechnicians?: string[];
-  priority?: 'low' | 'normal' | 'high' | 'emergency';
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   notes?: string;
   responseTime?: number;
   completionTime?: number;
@@ -62,7 +64,7 @@ const generateChecklistFromItems = (items: any[]) => {
   return items.map((item, index) => ({
     id: `checklist-${index + 1}`,
     task: `${item.name} - ${item.description || 'Complete task'}`,
-    isCompleted: false
+    completed: false
   }));
 };
 
@@ -78,41 +80,124 @@ const getRequiredSkills = (items: any[]): string[] => {
   return Array.from(skills);
 };
 
+const mapEstimateCategoryToJobCategory = (category: string): 'hvac' | 'plumbing' | 'electrical' | 'landscaping' | 'cleaning' | 'maintenance' | 'repair' | 'installation' | 'inspection' | 'other' => {
+  const categoryMap: Record<string, 'hvac' | 'plumbing' | 'electrical' | 'landscaping' | 'cleaning' | 'maintenance' | 'repair' | 'installation' | 'inspection' | 'other'> = {
+    'hvac': 'hvac',
+    'plumbing': 'plumbing',
+    'electrical': 'electrical',
+    'landscaping': 'landscaping',
+    'cleaning': 'cleaning',
+    'maintenance': 'maintenance',
+    'repair': 'repair',
+    'installation': 'installation',
+    'inspection': 'inspection'
+  };
+  
+  return categoryMap[category?.toLowerCase()] || 'other';
+};
+
+const getSafetyNotes = (items: any[]): string[] => {
+  const safetyNotes: string[] = [];
+  const categories = new Set(items.map(item => item.category).filter(Boolean));
+  
+  if (categories.has('electrical')) {
+    safetyNotes.push('Turn off power at breaker before starting work');
+    safetyNotes.push('Use proper electrical safety equipment');
+    safetyNotes.push('Test circuits before and after work');
+  }
+  if (categories.has('plumbing')) {
+    safetyNotes.push('Turn off water supply before starting work');
+    safetyNotes.push('Have towels and buckets ready for water cleanup');
+  }
+  if (categories.has('hvac')) {
+    safetyNotes.push('Turn off HVAC system before maintenance');
+    safetyNotes.push('Check for proper ventilation');
+  }
+  
+  return safetyNotes;
+};
+
+const calculateLaborCost = (items: any[]): number => {
+  return items
+    .filter(item => item.type === 'labor' || item.type === 'service')
+    .reduce((sum, item) => sum + (item.total || 0), 0);
+};
+
+const calculateMaterialCost = (items: any[]): number => {
+  return items
+    .filter(item => item.type === 'part' || item.type === 'material' || item.type === 'equipment')
+    .reduce((sum, item) => sum + (item.total || 0), 0);
+};
+
 export const convertEstimateToJob = (
-  estimate: Estimate, 
+  estimate: Estimate,
+  client: Client,
+  property: Property,
   options: JobConversionOptions = {}
 ): Job => {
   const estimatedDuration = calculateEstimatedDuration(estimate.items);
+  const clientName = client.type === 'company' ? (client.companyName || '') : `${client.firstName || ''} ${client.lastName || ''}`.trim();
+  const propertyAddress = property.address ? `${property.address.street || ''}, ${property.address.city || ''}`.trim() : '';
+  
+  // Determine job category based on estimate items
+  const categories = estimate.items.map(item => item.category).filter(Boolean);
+  const primaryCategory = categories.length > 0 ? categories[0] : 'maintenance';
+  const jobCategory = mapEstimateCategoryToJobCategory(primaryCategory || 'maintenance');
   
   const job: Job = {
-    id: `job-${Date.now()}`,
-    jobNumber: generateJobNumber(),
+    id: `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    jobNumber: generateJobNumber(), // Will be overridden by jobStorage.generateJobNumber()
     clientId: estimate.clientId,
+    clientName,
     propertyId: estimate.propertyId,
+    propertyAddress,
     estimateId: estimate.id,
-    title: estimate.title,
+    title: `${estimate.title} (From Estimate ${estimate.estimateNumber})`,
     scope: {
       description: estimate.description,
-      estimatedDuration,
-      complexity: determineComplexity(estimate.items),
-      specialRequirements: getSpecialRequirements(estimate.items)
+      objectives: [
+        `Complete work as outlined in estimate ${estimate.estimateNumber}`,
+        `Deliver all services and materials as specified`,
+        `Ensure client satisfaction and quality standards`
+      ],
+      deliverables: estimate.items.map(item => 
+        `${item.name} - ${item.description || 'Complete as specified'} (Qty: ${item.quantity})`
+      ),
+      requirements: getSpecialRequirements(estimate.items),
+      safetyNotes: getSafetyNotes(estimate.items)
     },
+    description: `Job created from approved estimate ${estimate.estimateNumber}. ${estimate.description}`,
+    category: jobCategory,
+    scheduledDate: options.scheduledDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    estimatedDuration: `${Math.ceil(estimatedDuration)}h`,
+    scheduledVisits: [{
+      id: `visit-${Date.now()}`,
+      date: options.scheduledDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      time: '09:00',
+      duration: `${Math.ceil(estimatedDuration)}h`,
+      purpose: 'Complete work as per estimate',
+      status: 'scheduled'
+    }],
+    status: 'draft',
+    priority: options.priority || 'medium',
+    estimatedCost: estimate.total,
+    laborCost: calculateLaborCost(estimate.items),
+    materialCost: calculateMaterialCost(estimate.items),
+    assignedTechnicians: [],
     checklist: generateChecklistFromItems(estimate.items),
     sla: {
       responseTime: options.responseTime || 24,
-      completionTime: options.completionTime || estimatedDuration,
-      priority: options.priority || 'normal'
+      completionTime: options.completionTime || Math.ceil(estimatedDuration),
+      escalationContacts: []
     },
-    scheduledVisits: [],
-    assignedTechnicians: options.assignedTechnicians || [],
-    status: 'scheduled',
-    photos: [],
     signatures: [],
-    notes: options.notes || estimate.notes || '',
-    internalNotes: estimate.internalNotes || '',
-    createdBy: estimate.createdBy,
+    photos: [],
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdBy: estimate.createdBy,
+    updatedAt: new Date().toISOString(),
+    updatedBy: estimate.createdBy,
+    internalNotes: `Created from estimate ${estimate.estimateNumber}. ${estimate.internalNotes || ''}`,
+    clientNotes: options.notes || estimate.notes || `Work to be completed as per estimate ${estimate.estimateNumber}`
   };
 
   return job;

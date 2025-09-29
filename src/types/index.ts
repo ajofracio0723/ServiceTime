@@ -1,7 +1,6 @@
 export interface PersonalInfo {
   name: string;
   email: string;
-  password: string;
   phone: string;
   profilePic?: string;
 }

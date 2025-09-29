@@ -1,27 +1,31 @@
 import { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 
 interface LoginPageProps {
-  onLogin: (email: string) => void;
   onSignUp: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignUp }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onSignUp }) => {
+  const { state, sendLoginOTP, verifyLoginOTP } = useAuth();
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
-    setIsLoading(true);
+    setError("");
     try {
-      // Simulate sending OTP
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setStep("otp");
-    } finally {
-      setIsLoading(false);
+      const result = await sendLoginOTP(email);
+      if (result.success) {
+        setStep("otp");
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
     }
   };
 
@@ -29,21 +33,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignUp }) => {
     e.preventDefault();
     if (otp.length !== 6) return;
 
-    setIsLoading(true);
+    setError("");
     try {
-      await onLogin(email);
-    } finally {
-      setIsLoading(false);
+      const result = await verifyLoginOTP(email, otp);
+      if (!result.success) {
+        setError(result.message);
+      }
+      // If successful, AuthContext will handle navigation
+    } catch (error) {
+      setError("An error occurred. Please try again.");
     }
   };
 
   const handleResendOtp = async () => {
-    setIsLoading(true);
+    setError("");
     try {
-      // Simulate resending OTP
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    } finally {
-      setIsLoading(false);
+      const result = await sendLoginOTP(email);
+      if (!result.success) {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError("Failed to resend OTP. Please try again.");
     }
   };
 
@@ -69,6 +79,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignUp }) => {
                 : `We sent a 6-digit code to ${email}`
               }
             </p>
+            {error && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
           </div>
 
           {/* Login Form */}
@@ -120,7 +135,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignUp }) => {
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    disabled={isLoading}
+                    disabled={state.isLoading}
                     className="text-sm text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
                   >
                     Resend code
@@ -140,7 +155,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignUp }) => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-blue-700">
-                      <strong>OTP Verification:</strong> We'll send a 6-digit code to your email for secure access.
+                      <strong>OTP Sent:</strong> Please check your email for the verification code.
                     </p>
                   </div>
                 </div>
@@ -150,10 +165,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignUp }) => {
 
             <button
               type="submit"
-              disabled={isLoading || (step === "email" ? !email : otp.length !== 6)}
+              disabled={state.isLoading || (step === "email" ? !email : otp.length !== 6)}
               className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading 
+              {state.isLoading 
                 ? (step === "email" ? "Sending Code..." : "Verifying...")
                 : (step === "email" ? "Continue" : "Verify & Sign In")
               }

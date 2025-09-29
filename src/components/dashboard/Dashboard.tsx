@@ -3,31 +3,38 @@ import { Sidebar } from "./Sidebar";
 import { JobsOverview } from "./job/JobsOverview";
 import { RevenueWidget } from "./RevenueWidget";
 import { QuickActions } from "./QuickActions";
+import { PaymentAnalytics } from "./analytics/PaymentAnalytics";
 import Client from './client/Client';
 import { Property } from "./property/Property";
 import { Estimate } from "./estimate/Estimate";
 import { Job } from "./job/Job";
 import { VisitWithViewMode } from "./visit/VisitWithViewMode";
-import { Invoice } from "./Invoice";
-import { Payment } from "./Payment";
-import { Files } from "./Files";
+import { Invoice } from "./invoice/Invoice";
+import { Payment } from "./payment/Payment";
+import { Files } from "./files/Files";
 import { Settings } from "./settings/Settings";
-import { Notification } from "./Notification";
+import { Notification } from "./notification/Notification";
 import { PriceBook } from "./pricebook/PriceBook";
 import { useOnboarding } from "../../context/OnboardingContext";
+import { useAuth } from "../../context/AuthContext";
+import { NotificationDropdown } from "./notification/NotificationDropdown";
 import {
   Calendar,
   Users,
   CheckCircle,
   Clock,
-  Bell,
   Search,
 } from "lucide-react";
 
 export const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
   const { state } = useOnboarding();
+  const { state: authState } = useAuth();
   const { businessInfo, personalInfo } = state.data;
+  
+  // Use authenticated user data if available, fallback to onboarding data
+  const displayName = authState.user?.first_name || personalInfo.name.split(" ")[0];
+  const businessName = authState.account?.name || businessInfo.businessName;
 
   const stats = [
     {
@@ -97,14 +104,24 @@ export const Dashboard = () => {
               })}
             </div>
 
-            {/* Revenue Widget */}
-            <RevenueWidget />
-
-            {/* Jobs Overview */}
-            <JobsOverview />
-
-            {/* Quick Actions */}
-            <QuickActions />
+            {/* Main Dashboard Widgets */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                {/* Revenue Widget */}
+                <RevenueWidget />
+                
+                {/* Jobs Overview */}
+                <JobsOverview />
+              </div>
+              
+              <div className="space-y-6">
+                {/* Payment Analytics */}
+                <PaymentAnalytics />
+                
+                {/* Quick Actions */}
+                <QuickActions />
+              </div>
+            </div>
           </div>
         );
 
@@ -115,7 +132,7 @@ export const Dashboard = () => {
         return <Property />;
 
       case "jobs":
-        return <Job />;
+        return <Job onNavigate={setActiveSection} />;
 
       case "visits":
       case "visits-calendar":
@@ -128,7 +145,7 @@ export const Dashboard = () => {
         return <Estimate />;
 
       case "invoices":
-        return <Invoice />;
+        return <Invoice onNavigate={setActiveSection} />;
 
       case "pricebook":
         return <PriceBook />;
@@ -181,10 +198,10 @@ export const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back, {personalInfo.name.split(" ")[0]}!
+                Welcome back, {displayName}!
               </h1>
               <p className="text-gray-600">
-                Here's what's happening with {businessInfo.businessName} today
+                Here's what's happening with {businessName} today
               </p>
             </div>
 
@@ -197,10 +214,7 @@ export const Dashboard = () => {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <button className="relative p-2 text-gray-400 hover:text-gray-600">
-                <Bell className="w-6 h-6" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationDropdown onViewAll={() => setActiveSection('notifications')} />
             </div>
           </div>
         </header>

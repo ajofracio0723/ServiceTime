@@ -20,8 +20,14 @@ import { Job as JobType } from './types';
 import { JobForm } from './JobForm';
 import { JobDetails } from './JobDetails';
 import { jobStorage } from '../../../utils/jobStorage';
+import { invoiceStorage } from '../../../utils/invoiceStorage';
+import { createInvoiceFromJob } from '../../../utils/invoiceFromJob';
 
-export const Job = () => {
+interface JobProps {
+  onNavigate?: (section: string) => void;
+}
+
+export const Job: React.FC<JobProps> = ({ onNavigate }) => {
   const [jobs, setJobs] = useState<JobType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'scheduled' | 'in-progress' | 'on-hold' | 'completed' | 'cancelled'>('all');
@@ -73,6 +79,28 @@ export const Job = () => {
     }
     setIsFormOpen(false);
     setEditingJob(null);
+  };
+
+  const completeJobAndCreateInvoice = (job: JobType) => {
+    const now = new Date().toISOString();
+    const updatedJob: JobType = { ...job, status: 'completed', completedAt: now, updatedAt: now };
+    // Persist job update
+    jobStorage.updateJob(updatedJob);
+    setJobs(prev => prev.map(j => (j.id === job.id ? updatedJob : j)));
+
+    // Create and persist invoice
+    const invoice = createInvoiceFromJob(updatedJob);
+    invoiceStorage.addInvoice(invoice);
+
+    try {
+      sessionStorage.setItem('recent_invoice_id', invoice.id);
+      sessionStorage.setItem('recent_invoice_number', invoice.invoiceNumber);
+    } catch {}
+
+    // Navigate to invoices
+    if (onNavigate) {
+      onNavigate('invoices');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -269,8 +297,19 @@ export const Job = () => {
                     <Eye className="w-4 h-4 mr-1" />
                     View Details
                   </button>
-                  <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
-                    Update Status
+                  <button
+                    onClick={() => {
+                      if (job.status === 'completed') {
+                        // If already completed, go to invoices directly
+                        if (onNavigate) onNavigate('invoices');
+                        return;
+                      }
+                      const ok = window.confirm('Mark this job as completed and generate an invoice?');
+                      if (ok) completeJobAndCreateInvoice(job);
+                    }}
+                    className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                  >
+                    {job.status === 'completed' ? 'View Invoice' : 'Mark Completed + Invoice'}
                   </button>
                 </div>
               </div>

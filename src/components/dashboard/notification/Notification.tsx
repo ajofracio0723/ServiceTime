@@ -14,19 +14,7 @@ import {
   Archive,
   Settings
 } from 'lucide-react';
-
-interface Notification {
-  id: string;
-  type: 'message' | 'reminder' | 'alert' | 'update' | 'payment';
-  title: string;
-  message: string;
-  sender: string;
-  timestamp: string;
-  isRead: boolean;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  category: 'client' | 'job' | 'payment' | 'system' | 'general';
-  actionRequired: boolean;
-}
+import { useNotifications } from '../../../context/NotificationContext';
 
 export const Notification: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,70 +22,9 @@ export const Notification: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<'all' | 'client' | 'job' | 'payment' | 'system' | 'general'>('all');
   const [filterRead, setFilterRead] = useState<'all' | 'read' | 'unread'>('all');
 
-  const mockNotifications: Notification[] = [
-    {
-      id: '1',
-      type: 'message',
-      title: 'New Client Inquiry',
-      message: 'John Smith has sent a new service request for HVAC maintenance at 123 Main St.',
-      sender: 'John Smith',
-      timestamp: '2024-01-20 10:30 AM',
-      isRead: false,
-      priority: 'high',
-      category: 'client',
-      actionRequired: true
-    },
-    {
-      id: '2',
-      type: 'reminder',
-      title: 'Job Reminder',
-      message: 'Reminder: HVAC maintenance scheduled for Sarah Johnson tomorrow at 2:00 PM.',
-      sender: 'System',
-      timestamp: '2024-01-20 09:15 AM',
-      isRead: false,
-      priority: 'medium',
-      category: 'job',
-      actionRequired: false
-    },
-    {
-      id: '3',
-      type: 'alert',
-      title: 'Payment Overdue',
-      message: 'Invoice INV-2024-003 for Mike Wilson is now 10 days overdue. Amount: $200.',
-      sender: 'System',
-      timestamp: '2024-01-20 08:00 AM',
-      isRead: true,
-      priority: 'urgent',
-      category: 'payment',
-      actionRequired: true
-    },
-    {
-      id: '4',
-      type: 'update',
-      title: 'Job Status Updated',
-      message: 'Plumbing repair job for Sarah Johnson has been marked as completed.',
-      sender: 'David Wilson',
-      timestamp: '2024-01-19 05:30 PM',
-      isRead: true,
-      priority: 'low',
-      category: 'job',
-      actionRequired: false
-    },
-    {
-      id: '5',
-      type: 'payment',
-      title: 'Payment Received',
-      message: 'Payment of $325 received from Sarah Johnson for invoice INV-2024-002.',
-      sender: 'System',
-      timestamp: '2024-01-19 03:45 PM',
-      isRead: true,
-      priority: 'medium',
-      category: 'payment',
-      actionRequired: false
-    }
-  ];
+  const { notifications, unreadCount, urgentCount, markAsRead, markAllAsRead } = useNotifications();
 
-  const filteredNotifications = mockNotifications.filter(notification => {
+  const filteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          notification.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          notification.sender.toLowerCase().includes(searchTerm.toLowerCase());
@@ -141,18 +68,6 @@ export const Notification: React.FC = () => {
     }
   };
 
-  const unreadCount = mockNotifications.filter(n => !n.isRead).length;
-  const urgentCount = mockNotifications.filter(n => n.priority === 'urgent' && !n.isRead).length;
-
-  const markAsRead = (id: string) => {
-    // In a real app, this would update the backend
-    console.log('Marking notification as read:', id);
-  };
-
-  const markAllAsRead = () => {
-    // In a real app, this would update the backend
-    console.log('Marking all notifications as read');
-  };
 
   return (
     <div className="space-y-6">
@@ -186,7 +101,7 @@ export const Notification: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Notifications</p>
-              <p className="text-2xl font-bold text-gray-900">{mockNotifications.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{notifications.length}</p>
             </div>
           </div>
         </div>

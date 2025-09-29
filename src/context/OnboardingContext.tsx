@@ -24,7 +24,6 @@ const initialState: OnboardingState = {
     personalInfo: {
       name: '',
       email: '',
-      password: '',
       phone: '',
     },
     businessInfo: {

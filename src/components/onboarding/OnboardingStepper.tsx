@@ -28,7 +28,7 @@ export const OnboardingStepper = () => {
     switch (currentStep) {
       case 1:
         return data.personalInfo.name && data.personalInfo.email && 
-               data.personalInfo.password && data.personalInfo.phone;
+               data.personalInfo.phone;
       case 2:
         return data.businessInfo.businessName && data.businessInfo.businessPhone && 
                data.businessInfo.businessEmail;

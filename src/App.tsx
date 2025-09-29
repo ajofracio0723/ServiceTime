@@ -1,13 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { OnboardingProvider, useOnboarding } from "./context/OnboardingContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import { LoginPage } from "./components/auth/LoginPage";
+import { SignupPage } from "./components/auth/SignupPage";
 import { OnboardingStepper } from "./components/onboarding/OnboardingStepper";
 import { Dashboard } from "./components/dashboard/Dashboard";
 
 const AppContent = () => {
-  const { state: authState, login, signup } = useAuth();
+  const { state: authState } = useAuth();
   const { state: onboardingState, dispatch } = useOnboarding();
+  const [showSignup, setShowSignup] = useState(false);
 
   // Mark onboarding as complete for existing users (not new users)
   useEffect(() => {
@@ -16,21 +19,13 @@ const AppContent = () => {
     }
   }, [authState.isAuthenticated, authState.isNewUser, onboardingState.isComplete, dispatch]);
 
-  const handleSignUp = async () => {
-    // Reset onboarding state when starting signup
-    dispatch({ type: "RESET" });
-
-    // Start signup flow
-    try {
-      await signup();
-    } catch (error) {
-      console.error("Signup failed:", error);
-    }
-  };
-
-  // Show login page if not authenticated
+  // Show login or signup page if not authenticated
   if (!authState.isAuthenticated) {
-    return <LoginPage onLogin={login} onSignUp={handleSignUp} />;
+    if (showSignup) {
+      return <SignupPage onLogin={() => setShowSignup(false)} />;
+    } else {
+      return <LoginPage onSignUp={() => setShowSignup(true)} />;
+    }
   }
 
   // Show onboarding if authenticated and is a new user (from signup) or onboarding not completed
@@ -46,7 +41,9 @@ function App() {
   return (
     <AuthProvider>
       <OnboardingProvider>
-        <AppContent />
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
       </OnboardingProvider>
     </AuthProvider>
   );

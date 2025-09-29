@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
 /* Custom animations for onboarding */
 @keyframes fadeIn {
@@ -31,4 +31,13 @@
 
 .animate-slideIn {
   animation: slideIn 0.2s ease-out;
+}
+
+/* Line clamp utility for notification text */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2; /* Standard property for compatibility */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

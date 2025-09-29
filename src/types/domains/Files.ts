@@ -47,7 +47,7 @@ export interface File {
   status: FileStatus;
   antivirusScan: AntivirusScan;
   fileAccess: FileAccess;
-  relatedEntityType?: 'job' | 'client' | 'property' | 'user' | 'invoice' | 'estimate';
+  relatedEntityType?: 'job' | 'client' | 'property' | 'user' | 'invoice' | 'estimate' | 'payment';
   relatedEntityId?: string;
   tags: string[];
   isPublic: boolean;

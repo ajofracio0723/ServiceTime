@@ -146,7 +146,7 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
       quantity: 1,
       taxable: true,
       itemId: data.id,
-    } as any;
+    };
     if (type === 'service') {
       next.unitPrice = data.basePrice ?? 0;
     } else if (type === 'part') {
@@ -162,7 +162,10 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
   const handleSelectTax = (tax: { name: string; rate: number }) => {
     setFormData(prev => {
       const existing = (prev.taxes || []).some(t => t.name === tax.name && t.rate === tax.rate);
-      const taxes = existing ? prev.taxes || [] : [ ...(prev.taxes || []), { name: tax.name, rate: tax.rate, amount: 0 } ];
+      if (existing) {
+        return prev; // Don't add duplicate taxes
+      }
+      const taxes = [...(prev.taxes || []), { name: tax.name, rate: tax.rate, amount: 0 }];
       return { ...prev, taxes };
     });
     setIsPickerOpen(false);
@@ -171,7 +174,10 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
   const handleSelectDiscount = (discount: { type: 'percentage' | 'fixed'; value: number }) => {
     setFormData(prev => {
       const exists = (prev.discounts || []).some(d => d.type === discount.type && d.value === discount.value);
-      const discounts = exists ? prev.discounts || [] : [ ...(prev.discounts || []), { type: discount.type, value: discount.value } ];
+      if (exists) {
+        return prev; // Don't add duplicate discounts
+      }
+      const discounts = [...(prev.discounts || []), { type: discount.type, value: discount.value }];
       return { ...prev, discounts };
     });
     setIsPickerOpen(false);
@@ -392,7 +398,7 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
                 <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
                   <div className="flex items-center text-gray-600">
                     <MapPin className="w-4 h-4 mr-1" />
-                    {selectedProperty.address.street}, {selectedProperty.address.city}
+                    {selectedProperty.address?.street || ''}, {selectedProperty.address?.city || ''}
                   </div>
                 </div>
               )}
@@ -638,8 +644,8 @@ export const EstimateForm: React.FC<EstimateFormProps> = ({
         onClose={() => setIsPickerOpen(false)}
         initialTab={pickerInitialTab}
         onSelectItem={handleSelectFromPriceBook}
-        onSelectTax={handleSelectTax as any}
-        onSelectDiscount={handleSelectDiscount as any}
+        onSelectTax={handleSelectTax}
+        onSelectDiscount={handleSelectDiscount}
       />
     </div>
   );

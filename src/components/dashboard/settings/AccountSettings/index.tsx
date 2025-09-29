@@ -5,10 +5,14 @@ import {
   Percent,
   FileText,
   Bell, 
-  Save
+  Save,
+  User,
+  Building,
+  Shield,
+  Users
 } from 'lucide-react';
-
- 
+import { useAuth } from '../../../../context/AuthContext';
+import { userApi, UserProfileUpdate, AccountUpdate } from '../../../../services/userApi';
 
 interface NotificationSettings {
   emailNotifications: boolean;
@@ -21,10 +25,32 @@ interface NotificationSettings {
 }
 
 export const AccountSettings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'branding' | 'businessHours' | 'tax' | 'invoices' | 'billing' | 'notifications'>('branding');
+  const { state } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'branding' | 'businessHours' | 'tax' | 'invoices' | 'notifications' | 'security' | 'team'>('profile');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // localStorage keys
+  // User Profile State
+  const [userProfile, setUserProfile] = useState<UserProfileUpdate>({
+    first_name: state.user?.first_name || '',
+    last_name: state.user?.last_name || '',
+    email: state.user?.email || '',
+    role: state.user?.role || 'technician'
+  });
+  const [savedUserProfile, setSavedUserProfile] = useState<UserProfileUpdate>(userProfile);
+
+  // Account State
+  const [accountInfo, setAccountInfo] = useState<AccountUpdate>({
+    name: state.account?.name || '',
+    business_type: state.account?.business_type || ''
+  });
+  const [savedAccountInfo, setSavedAccountInfo] = useState<AccountUpdate>(accountInfo);
+
+  // Preferences State
+  // Removed unused preferences state (values were never read)
+
+  // localStorage keys for backward compatibility
   const LS_KEYS = {
     activeTab: 'settings.activeTab',
     branding: 'settings.branding',
@@ -111,54 +137,154 @@ export const AccountSettings: React.FC = () => {
   const [savedInvoices, setSavedInvoices] = useState<InvoiceTemplates>(defaultInvoices);
 
   // Billing (uses onboarding plan key)
-  interface PlanLike { id: 'starter'|'pro'|'business'|'enterprise'; name: string; price: number; customPricing?: boolean; }
-  const allPlans: PlanLike[] = [
-    { id: 'starter', name: 'Starter', price: 59 },
-    { id: 'pro', name: 'Pro', price: 119 },
-    { id: 'business', name: 'Business', price: 229 },
-    { id: 'enterprise', name: 'Enterprise', price: 499, customPricing: true },
-  ];
-  const defaultPlan: PlanLike = allPlans[1];
-  const [billingPlan, setBillingPlan] = useState<PlanLike>(defaultPlan);
-  const [savedBillingPlan, setSavedBillingPlan] = useState<PlanLike>(defaultPlan);
+  // Billing UI removed per request. Plan remains managed via onboarding.
 
-  // Load from localStorage on mount
+  // Check if user has valid authentication
+  const checkAuthAndLoadData = async () => {
+    // Check if we have a valid JWT token format
+    const token = localStorage.getItem('access_token');
+    if (!token || token.split('.').length !== 3) {
+      console.log('🚨 [AccountSettings] Invalid or missing JWT token, clearing auth data');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('account');
+      setError('Please log in again to access account settings');
+      return;
+    }
+    
+    // Load data if we have a valid token format
+    await loadUserData();
+    await loadPreferences();
+  };
+
+  // Load user data and preferences on mount
   useEffect(() => {
+    checkAuthAndLoadData();
+    
+    // Load active tab from localStorage
     try {
       const storedTab = localStorage.getItem(LS_KEYS.activeTab);
-      if (storedTab === 'branding' || storedTab === 'businessHours' || storedTab === 'notifications' || storedTab === 'tax' || storedTab === 'invoices' || storedTab === 'billing') {
-        setActiveTab(storedTab);
-      }
-      const b = JSON.parse(localStorage.getItem(LS_KEYS.branding) || 'null') || defaultBranding;
-      setBranding(b); setSavedBranding(b);
-      const h = JSON.parse(localStorage.getItem(LS_KEYS.hours) || 'null') || defaultHours;
-      setHours(h); setSavedHours(h);
-      const t = JSON.parse(localStorage.getItem(LS_KEYS.tax) || 'null') || defaultTax;
-      setTax(t); setSavedTax(t);
-      const inv = JSON.parse(localStorage.getItem(LS_KEYS.invoices) || 'null') || defaultInvoices;
-      setInvoices(inv); setSavedInvoices(inv);
-
-      const noti = JSON.parse(localStorage.getItem(LS_KEYS.notifications) || 'null') || defaultNotifications;
-      setNotificationSettings(noti);
-      setSavedNotificationSettings(noti);
-
-      const rawPlan = localStorage.getItem(LS_KEYS.billingPlan);
-      if (rawPlan) {
-        try {
-          const parsed = JSON.parse(rawPlan);
-          const matched = allPlans.find(p => p.id === parsed.id) || defaultPlan;
-          setBillingPlan(matched);
-          setSavedBillingPlan(matched);
-        } catch {}
-      } else {
-        setBillingPlan(defaultPlan);
-        setSavedBillingPlan(defaultPlan);
+      if (storedTab && ['profile', 'account', 'branding', 'businessHours', 'tax', 'invoices', 'notifications', 'security', 'team'].includes(storedTab)) {
+        setActiveTab(storedTab as any);
       }
     } catch (e) {
       // If parsing fails, fall back to defaults silently
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load user profile and account data
+  const loadUserData = async () => {
+    if (!state.user) {
+      console.log('🚨 [AccountSettings] No user in auth state, skipping data load');
+      return;
+    }
+    
+    console.log('🔍 [AccountSettings] Loading user data for:', state.user.email);
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Check if we have a valid token
+      const token = localStorage.getItem('access_token');
+      console.log('🔍 [AccountSettings] Current token:', token ? `${token.substring(0, 20)}...` : 'None');
+      
+      const result = await userApi.getUserProfile();
+      console.log('🔍 [AccountSettings] getUserProfile result:', result);
+      
+      if (result && result.success && result.user && result.account) {
+        const profileData = {
+          first_name: result.user.first_name || '',
+          last_name: result.user.last_name || '',
+          email: result.user.email || '',
+          role: result.user.role || 'technician'
+        };
+        setUserProfile(profileData);
+        setSavedUserProfile(profileData);
+        
+        const accountData = {
+          name: result.account.name || '',
+          business_type: result.account.business_type || ''
+        };
+        setAccountInfo(accountData);
+        setSavedAccountInfo(accountData);
+      }
+    } catch (err) {
+      setError('Failed to load user data');
+      console.error('Error loading user data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load user preferences
+  const loadPreferences = async () => {
+    console.log('🔍 [AccountSettings] Loading user preferences...');
+    try {
+      const result = await userApi.getUserPreferences();
+      console.log('🔍 [AccountSettings] getUserPreferences result:', result);
+      
+      if (result && result.success && result.preferences) {
+        // Using returned preferences to hydrate legacy state for UI sections
+        
+        // Update legacy state for backward compatibility
+        if (result.preferences.branding) {
+          const brandingData = {
+            businessName: result.preferences.branding.business_name,
+            logoUrl: result.preferences.branding.logo_url,
+            primaryColor: result.preferences.branding.primary_color,
+            secondaryColor: result.preferences.branding.secondary_color
+          };
+          setBranding(brandingData);
+          setSavedBranding(brandingData);
+        }
+        if (result.preferences.business_hours) {
+          setHours(result.preferences.business_hours as any);
+          setSavedHours(result.preferences.business_hours as any);
+        }
+        if (result.preferences.tax_settings) {
+          setTax(result.preferences.tax_settings as any);
+          setSavedTax(result.preferences.tax_settings as any);
+        }
+        if (result.preferences.invoice_settings) {
+          setInvoices(result.preferences.invoice_settings as any);
+          setSavedInvoices(result.preferences.invoice_settings as any);
+        }
+        if (result.preferences.notifications) {
+          const notifSettings = {
+            emailNotifications: result.preferences.notifications.email_notifications,
+            smsNotifications: result.preferences.notifications.sms_notifications,
+            pushNotifications: result.preferences.notifications.push_notifications,
+            jobUpdates: result.preferences.notifications.job_updates,
+            paymentReminders: result.preferences.notifications.payment_reminders,
+            clientMessages: result.preferences.notifications.client_messages,
+            systemAlerts: result.preferences.notifications.system_alerts
+          };
+          setNotificationSettings(notifSettings);
+          setSavedNotificationSettings(notifSettings);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading preferences:', err);
+      // Fall back to localStorage for backward compatibility
+      try {
+        const b = JSON.parse(localStorage.getItem(LS_KEYS.branding) || 'null') || defaultBranding;
+        setBranding(b); setSavedBranding(b);
+        const h = JSON.parse(localStorage.getItem(LS_KEYS.hours) || 'null') || defaultHours;
+        setHours(h); setSavedHours(h);
+        const t = JSON.parse(localStorage.getItem(LS_KEYS.tax) || 'null') || defaultTax;
+        setTax(t); setSavedTax(t);
+        const inv = JSON.parse(localStorage.getItem(LS_KEYS.invoices) || 'null') || defaultInvoices;
+        setInvoices(inv); setSavedInvoices(inv);
+        const noti = JSON.parse(localStorage.getItem(LS_KEYS.notifications) || 'null') || defaultNotifications;
+        setNotificationSettings(noti);
+        setSavedNotificationSettings(noti);
+      } catch (e) {
+        // If parsing fails, fall back to defaults silently
+      }
+    }
+  };
 
   // Persist active tab
   useEffect(() => {
@@ -169,55 +295,233 @@ export const AccountSettings: React.FC = () => {
 
   // Dirty-state helpers
   const isEqual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const profileDirty = !isEqual(userProfile, savedUserProfile);
+  const accountDirty = !isEqual(accountInfo, savedAccountInfo);
   const brandingDirty = !isEqual(branding, savedBranding);
   const hoursDirty = !isEqual(hours, savedHours);
   const taxDirty = !isEqual(tax, savedTax);
   const invoicesDirty = !isEqual(invoices, savedInvoices);
   const notificationsDirty = !isEqual(notificationSettings, savedNotificationSettings);
-  const billingDirty = billingPlan.id !== savedBillingPlan.id;
 
   const tabs = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'account', label: 'Account', icon: Building },
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'businessHours', label: 'Business Hours', icon: Clock },
     { id: 'tax', label: 'Tax Settings', icon: Percent },
     { id: 'invoices', label: 'Invoice Templates', icon: FileText },
-    { id: 'billing', label: 'Billing', icon: FileText },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'team', label: 'Team', icon: Users },
   ];
 
   const handleSave = async () => {
     setSaveStatus('saving');
+    setError(null);
+    
     try {
-      // Simulate a short delay for UX and persist to localStorage
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      // Persist only the relevant pieces based on active tab
-      if (activeTab === 'branding') {
-        localStorage.setItem(LS_KEYS.branding, JSON.stringify(branding));
-        setSavedBranding(branding);
+      let result: any = { success: false };
+      
+      if (activeTab === 'profile') {
+        result = await userApi.updateUserProfile(userProfile);
+        if (result.success) {
+          setSavedUserProfile(userProfile);
+        }
+      } else if (activeTab === 'account') {
+        result = await userApi.updateAccount(accountInfo);
+        if (result.success) {
+          setSavedAccountInfo(accountInfo);
+        }
+      } else if (activeTab === 'branding') {
+        const prefsUpdate = { branding: { 
+          business_name: branding.businessName,
+          logo_url: branding.logoUrl,
+          primary_color: branding.primaryColor,
+          secondary_color: branding.secondaryColor
+        }};
+        result = await userApi.updateUserPreferences(prefsUpdate);
+        if (result.success) {
+          setSavedBranding(branding);
+          localStorage.setItem(LS_KEYS.branding, JSON.stringify(branding));
+        }
       } else if (activeTab === 'businessHours') {
-        localStorage.setItem(LS_KEYS.hours, JSON.stringify(hours));
-        setSavedHours(hours);
+        const prefsUpdate = { business_hours: hours };
+        result = await userApi.updateUserPreferences(prefsUpdate);
+        if (result.success) {
+          setSavedHours(hours);
+          localStorage.setItem(LS_KEYS.hours, JSON.stringify(hours));
+        }
       } else if (activeTab === 'tax') {
-        localStorage.setItem(LS_KEYS.tax, JSON.stringify(tax));
-        setSavedTax(tax);
+        const prefsUpdate = { tax_settings: {
+          tax_id: tax.taxId,
+          default_rate: tax.defaultRate,
+          tax_inclusive: tax.taxInclusive
+        }};
+        result = await userApi.updateUserPreferences(prefsUpdate);
+        if (result.success) {
+          setSavedTax(tax);
+          localStorage.setItem(LS_KEYS.tax, JSON.stringify(tax));
+        }
       } else if (activeTab === 'invoices') {
-        localStorage.setItem(LS_KEYS.invoices, JSON.stringify(invoices));
-        setSavedInvoices(invoices);
+        const prefsUpdate = { invoice_settings: {
+          template_style: invoices.templateStyle,
+          numbering_prefix: invoices.numberingPrefix,
+          next_number: invoices.nextNumber,
+          terms: invoices.terms,
+          footer_note: invoices.footerNote,
+          accent_color: invoices.accentColor,
+          date_format: invoices.dateFormat,
+          paper_size: invoices.paperSize,
+          show_logo: invoices.showLogo,
+          show_summary: invoices.showSummary,
+          show_payment_terms: invoices.showPaymentTerms
+        }};
+        result = await userApi.updateUserPreferences(prefsUpdate);
+        if (result.success) {
+          setSavedInvoices(invoices);
+          localStorage.setItem(LS_KEYS.invoices, JSON.stringify(invoices));
+        }
       } else if (activeTab === 'notifications') {
-        localStorage.setItem(LS_KEYS.notifications, JSON.stringify(notificationSettings));
-        setSavedNotificationSettings(notificationSettings);
-      } else if (activeTab === 'billing') {
-        localStorage.setItem(LS_KEYS.billingPlan, JSON.stringify(billingPlan));
-        setSavedBillingPlan(billingPlan);
+        const prefsUpdate = { notifications: {
+          email_notifications: notificationSettings.emailNotifications,
+          sms_notifications: notificationSettings.smsNotifications,
+          push_notifications: notificationSettings.pushNotifications,
+          job_updates: notificationSettings.jobUpdates,
+          payment_reminders: notificationSettings.paymentReminders,
+          client_messages: notificationSettings.clientMessages,
+          system_alerts: notificationSettings.systemAlerts
+        }};
+        result = await userApi.updateUserPreferences(prefsUpdate);
+        if (result.success) {
+          setSavedNotificationSettings(notificationSettings);
+          localStorage.setItem(LS_KEYS.notifications, JSON.stringify(notificationSettings));
+        }
       }
-
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch {
+      
+      if (result.success) {
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } else {
+        setError(result.message || 'Failed to save settings');
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      }
+    } catch (err) {
+      setError('An error occurred while saving');
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
+      console.error('Save error:', err);
     }
+  };
+
+  // Handle export account data
+  const handleExportData = async () => {
+    if (!window.confirm('Export all account data? This will download a JSON file with your account information.')) {
+      return;
+    }
+
+    setSaveStatus('saving');
+    setError(null);
+
+    try {
+      const result = await userApi.exportAccountData();
+      
+      if (result.success && result.data) {
+        // Create and download JSON file
+        const dataStr = JSON.stringify(result.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `servicetime-account-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } else {
+        setError(result.message || 'Failed to export account data');
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      }
+    } catch (err) {
+      setError('An error occurred while exporting data');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      console.error('Export error:', err);
+    }
+  };
+
+  // Handle delete account
+  const handleDeleteAccount = async () => {
+    const confirmation1 = window.confirm(
+      '⚠️ WARNING: This will permanently delete your entire account and all data. This action cannot be undone.\n\nAre you absolutely sure you want to continue?'
+    );
+    
+    if (!confirmation1) return;
+
+    const confirmation2 = window.prompt(
+      'To confirm account deletion, please type "DELETE_ACCOUNT" (without quotes):'
+    );
+    
+    if (confirmation2 !== 'DELETE_ACCOUNT') {
+      alert('Account deletion cancelled. The confirmation text did not match.');
+      return;
+    }
+
+    setSaveStatus('saving');
+    setError(null);
+
+    try {
+      const result = await userApi.deleteAccount('DELETE_ACCOUNT');
+      
+      if (result.success) {
+        alert('Account deleted successfully. You will be logged out.');
+        // Clear all local storage and redirect to login
+        localStorage.clear();
+        window.location.href = '/';
+      } else {
+        setError(result.message || 'Failed to delete account');
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      }
+    } catch (err) {
+      setError('An error occurred while deleting account');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      console.error('Delete error:', err);
+    }
+  };
+
+  // Handle subscription management
+  const handleManageSubscription = () => {
+    // For now, show a modal with subscription options
+    // In a real implementation, this would integrate with Stripe/payment provider
+    
+    const currentPlan = state.account?.subscription_plan || 'starter';
+    const plans = [
+      { id: 'starter', name: 'Starter', price: '$59/mo', features: ['Basic features', 'Up to 5 users', 'Email support'] },
+      { id: 'pro', name: 'Pro', price: '$119/mo', features: ['Advanced features', 'Up to 25 users', 'Priority support', 'AI insights'] },
+      { id: 'business', name: 'Business', price: '$229/mo', features: ['All features', 'Unlimited users', '24/7 support', 'Custom integrations'] },
+      { id: 'enterprise', name: 'Enterprise', price: 'Custom', features: ['Enterprise features', 'Dedicated support', 'Custom deployment'] }
+    ];
+
+    const planDetails = plans.map(plan => 
+      `${plan.name} - ${plan.price}\n${plan.features.join(', ')}`
+    ).join('\n\n');
+
+    const message = `Current Plan: ${currentPlan.toUpperCase()}\n\nAvailable Plans:\n\n${planDetails}\n\nNote: This is a demo. In production, this would open a subscription management portal with Stripe or similar payment provider.`;
+
+    alert(message);
+    
+    // TODO: Implement real subscription management
+    // - Integrate with Stripe Customer Portal
+    // - Add backend API for subscription changes
+    // - Handle plan upgrades/downgrades
+    // - Process payments and billing
   };
 
   // helpers for Branding
@@ -237,6 +541,503 @@ export const AccountSettings: React.FC = () => {
     };
     reader.readAsDataURL(file);
   };
+
+  // Profile Tab
+  const renderProfileTab = () => (
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium text-gray-900">User Profile</h3>
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      {/* Basic Profile Information */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h4 className="text-md font-medium text-gray-900 mb-4">Basic Information</h4>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+            <input 
+              type="text" 
+              value={userProfile.first_name || ''} 
+              onChange={(e) => setUserProfile({...userProfile, first_name: e.target.value})} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+            <input 
+              type="text" 
+              value={userProfile.last_name || ''} 
+              onChange={(e) => setUserProfile({...userProfile, last_name: e.target.value})} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+            <input 
+              type="email" 
+              value={userProfile.email || ''} 
+              onChange={(e) => setUserProfile({...userProfile, email: e.target.value})} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+            <select 
+              value={userProfile.role || 'technician'} 
+              onChange={(e) => setUserProfile({...userProfile, role: e.target.value})} 
+              disabled={state.user?.role !== 'owner'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="owner">Owner</option>
+              <option value="admin">Admin</option>
+              <option value="dispatcher">Dispatcher</option>
+              <option value="technician">Technician</option>
+              <option value="accountant">Accountant</option>
+            </select>
+            {state.user?.role !== 'owner' && (
+              <p className="text-xs text-gray-500 mt-1">Only the account owner can change user roles</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Account Details */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h4 className="text-md font-medium text-gray-900 mb-4">Account Details</h4>
+        <div className="grid md:grid-cols-2 gap-6 text-sm">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">User Status</label>
+            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+              state.user?.status === 'active' 
+                ? 'bg-green-100 text-green-800' 
+                : state.user?.status === 'pending'
+                ? 'bg-yellow-100 text-yellow-800'
+                : 'bg-red-100 text-red-800'
+            }`}>
+              {state.user?.status?.toUpperCase() || 'ACTIVE'}
+            </span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email Verified</label>
+            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+              state.user?.email_verified 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-red-100 text-red-800'
+            }`}>
+              {state.user?.email_verified ? 'VERIFIED' : 'UNVERIFIED'}
+            </span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Last Login</label>
+            <p className="text-gray-600">
+              {state.user?.last_login 
+                ? new Date(state.user.last_login).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Never'
+              }
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Account Created</label>
+            <p className="text-gray-600">
+              {state.user?.created_at 
+                ? new Date(state.user.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })
+                : 'Unknown'
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Owner-Only Settings */}
+      {state.user?.role === 'owner' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+          <div className="flex items-center mb-4">
+            <Shield className="h-5 w-5 text-amber-600 mr-2" />
+            <h4 className="text-md font-medium text-amber-900">Owner Settings</h4>
+          </div>
+          
+          <div className="space-y-6">
+            {/* Subscription Management */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-amber-800 mb-2">Subscription Plan</label>
+                <div className="flex items-center space-x-3">
+                  <span className="px-3 py-2 bg-amber-100 text-amber-800 rounded-lg text-sm font-medium">
+                    {state.account?.subscription_plan?.toUpperCase() || 'STARTER'}
+                  </span>
+                  <button 
+                    onClick={handleManageSubscription}
+                    className="text-sm text-amber-700 hover:text-amber-900 underline"
+                  >
+                    Manage Subscription
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-amber-800 mb-2">Account Status</label>
+                <span className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                  state.account?.status === 'active' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {state.account?.status?.toUpperCase() || 'ACTIVE'}
+                </span>
+              </div>
+            </div>
+
+            {/* Data Management */}
+            <div className="border-t border-amber-200 pt-6">
+              <h5 className="text-sm font-medium text-amber-900 mb-4">Data Management</h5>
+              <div className="grid md:grid-cols-2 gap-4">
+                <button 
+                  onClick={handleExportData}
+                  disabled={saveStatus === 'saving'}
+                  className="flex items-center justify-center px-4 py-3 border border-amber-300 rounded-lg text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {saveStatus === 'saving' ? 'Exporting...' : 'Export Account Data'}
+                </button>
+                <button 
+                  onClick={handleDeleteAccount}
+                  disabled={saveStatus === 'saving'}
+                  className="flex items-center justify-center px-4 py-3 border border-red-300 rounded-lg text-sm font-medium text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  {saveStatus === 'saving' ? 'Processing...' : 'Delete Account'}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+      
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <User className="h-5 w-5 text-blue-400" />
+          </div>
+          <div className="ml-3">
+            <h4 className="text-sm font-medium text-blue-800">Profile Information</h4>
+            <p className="text-sm text-blue-700 mt-1">
+              Your profile information is used throughout the application. Changes to your email address may require re-verification.
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <button 
+        onClick={handleSave} 
+        disabled={saveStatus === 'saving' || !profileDirty} 
+        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+      >
+        <Save className="w-4 h-4" />
+        <span>{saveStatus === 'saving' ? 'Saving...' : 'Save Profile'}</span>
+      </button>
+    </div>
+  );
+
+  // Account Tab
+  const renderAccountTab = () => (
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium text-gray-900">Account Information</h3>
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Business Name</label>
+          <input 
+            type="text" 
+            value={accountInfo.name || ''} 
+            onChange={(e) => setAccountInfo({...accountInfo, name: e.target.value})} 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Business Type</label>
+          <select 
+            value={accountInfo.business_type || ''} 
+            onChange={(e) => setAccountInfo({...accountInfo, business_type: e.target.value})} 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Select Business Type</option>
+            <option value="hvac">HVAC</option>
+            <option value="plumbing">Plumbing</option>
+            <option value="electrical">Electrical</option>
+            <option value="general_contractor">General Contractor</option>
+            <option value="landscaping">Landscaping</option>
+            <option value="cleaning">Cleaning Services</option>
+            <option value="maintenance">Property Maintenance</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Account Information Details */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h4 className="text-md font-medium text-gray-900 mb-4">Account Information</h4>
+        <div className="grid md:grid-cols-2 gap-6 text-sm">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Account ID</label>
+            <p className="text-gray-600 font-mono text-xs">
+              {state.account?.id || 'Not available'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Account Created</label>
+            <p className="text-gray-600">
+              {state.account?.created_at 
+                ? new Date(state.account.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })
+                : 'Unknown'
+              }
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+            <p className="text-gray-600">
+              {state.account?.updated_at 
+                ? new Date(state.account.updated_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Unknown'
+              }
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Current Plan</label>
+            <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {state.account?.subscription_plan?.toUpperCase() || 'STARTER'}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <Building className="h-5 w-5 text-yellow-400" />
+          </div>
+          <div className="ml-3">
+            <h4 className="text-sm font-medium text-yellow-800">Account Settings</h4>
+            <p className="text-sm text-yellow-700 mt-1">
+              These settings affect your entire account. Only account owners and admins can modify this information.
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <button 
+        onClick={handleSave} 
+        disabled={saveStatus === 'saving' || !accountDirty || (state.user?.role !== 'owner' && state.user?.role !== 'admin')} 
+        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+      >
+        <Save className="w-4 h-4" />
+        <span>{saveStatus === 'saving' ? 'Saving...' : 'Save Account'}</span>
+      </button>
+      
+      {(state.user?.role !== 'owner' && state.user?.role !== 'admin') && (
+        <p className="text-sm text-gray-500 mt-2">
+          You need owner or admin permissions to modify account settings.
+        </p>
+      )}
+    </div>
+  );
+
+  // Security Tab
+  const renderSecurityTab = () => (
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium text-gray-900">Security Settings</h3>
+      
+      
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <Shield className="h-5 w-5 text-blue-400" />
+          </div>
+          <div className="ml-3">
+            <h4 className="text-sm font-medium text-blue-800">Security Information</h4>
+            <p className="text-sm text-blue-700 mt-1">
+              Your account is secured with email-based OTP authentication. No passwords are stored.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Team Tab
+  const renderTeamTab = () => (
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium text-gray-900">Team Management</h3>
+      
+      {state.user?.role === 'owner' ? (
+        <div className="space-y-6">
+          {/* Team Overview */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-md font-medium text-gray-900">Team Overview</h4>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>Invite Member</span>
+              </button>
+            </div>
+            
+            <div className="grid md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">1</p>
+                <p className="text-sm text-blue-800">Owner</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">0</p>
+                <p className="text-sm text-green-800">Admins</p>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <p className="text-2xl font-bold text-yellow-600">0</p>
+                <p className="text-sm text-yellow-800">Dispatchers</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <p className="text-2xl font-bold text-purple-600">0</p>
+                <p className="text-sm text-purple-800">Technicians</p>
+              </div>
+            </div>
+
+            {/* Current User */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {state.user?.first_name} {state.user?.last_name}
+                    </p>
+                    <p className="text-sm text-gray-600">{state.user?.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                    OWNER
+                  </span>
+                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                    ACTIVE
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Role Permissions */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h4 className="text-md font-medium text-gray-900 mb-4">Role Permissions</h4>
+            
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-5 gap-4 text-xs font-medium text-gray-700 border-b pb-2">
+                <div>Permission</div>
+                <div className="text-center">Owner</div>
+                <div className="text-center">Admin</div>
+                <div className="text-center">Dispatcher</div>
+                <div className="text-center">Technician</div>
+              </div>
+              
+              {[
+                { name: 'Manage Account Settings', owner: true, admin: true, dispatcher: false, technician: false },
+                { name: 'Invite Team Members', owner: true, admin: true, dispatcher: false, technician: false },
+                { name: 'Manage Billing', owner: true, admin: false, dispatcher: false, technician: false },
+                { name: 'Create/Edit Jobs', owner: true, admin: true, dispatcher: true, technician: false },
+                { name: 'View All Jobs', owner: true, admin: true, dispatcher: true, technician: false },
+                { name: 'Manage Clients', owner: true, admin: true, dispatcher: true, technician: false },
+                { name: 'Generate Reports', owner: true, admin: true, dispatcher: false, technician: false },
+                { name: 'Update Job Status', owner: true, admin: true, dispatcher: true, technician: true },
+                { name: 'View Assigned Jobs', owner: true, admin: true, dispatcher: true, technician: true },
+              ].map((permission, index) => (
+                <div key={index} className="grid md:grid-cols-5 gap-4 py-2 text-sm border-b border-gray-100">
+                  <div className="text-gray-900">{permission.name}</div>
+                  <div className="text-center">
+                    {permission.owner ? (
+                      <span className="text-green-600">✓</span>
+                    ) : (
+                      <span className="text-red-400">✗</span>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    {permission.admin ? (
+                      <span className="text-green-600">✓</span>
+                    ) : (
+                      <span className="text-red-400">✗</span>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    {permission.dispatcher ? (
+                      <span className="text-green-600">✓</span>
+                    ) : (
+                      <span className="text-red-400">✗</span>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    {permission.technician ? (
+                      <span className="text-green-600">✓</span>
+                    ) : (
+                      <span className="text-red-400">✗</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Invitation Management */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h4 className="text-md font-medium text-gray-900 mb-4">Pending Invitations</h4>
+            
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm">No pending invitations</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <Shield className="h-5 w-5 text-yellow-600 mr-3" />
+            <div>
+              <h4 className="font-medium text-yellow-900">Access Restricted</h4>
+              <p className="text-sm text-yellow-800 mt-1">
+                Only account owners can access team management features. Contact your account owner to manage team members and permissions.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   const renderBrandingTab = () => (
     <div className="space-y-6">
@@ -320,51 +1121,6 @@ export const AccountSettings: React.FC = () => {
     </div>
   );
 
-  const renderBillingTab = () => (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-900">Billing & Subscription</h3>
-      <p className="text-sm text-gray-600">Select a plan below. Your choice will sync with onboarding.</p>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {allPlans.map((plan) => {
-          const isSelected = billingPlan.id === plan.id;
-          return (
-            <div
-              key={plan.id}
-              onClick={() => setBillingPlan(plan)}
-              className={`relative border-2 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg ${
-                isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
-              }`}
-            >
-              {isSelected && (
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">Selected</span>
-              )}
-              <div className="text-center mb-3">
-                <h4 className="text-lg font-bold text-gray-900 mb-1">{plan.name}</h4>
-                <div className="text-2xl font-bold text-gray-900">
-                  ${plan.price}
-                  <span className="text-xs font-normal text-gray-600 block">{plan.customPricing ? '+ custom pricing' : '/month'}</span>
-                </div>
-              </div>
-              <ul className="text-xs text-gray-700 space-y-1">
-                <li className="flex items-start"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></span>Core features</li>
-                <li className="flex items-start"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></span>Scheduling & jobs</li>
-                <li className="flex items-start"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1 mr-2"></span>Invoices & payments</li>
-              </ul>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">Current: <span className="font-semibold text-gray-900">{billingPlan.name}</span></div>
-        <button onClick={handleSave} disabled={saveStatus==='saving' || !billingDirty} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2">
-          <Save className="w-4 h-4" />
-          <span>{saveStatus==='saving'?'Saving...':'Save Plan'}</span>
-        </button>
-      </div>
-    </div>
-  );
 
   const renderBusinessHoursTab = () => {
     const dayLabels: Record<DayKey,string> = { mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday' };
@@ -655,14 +1411,8 @@ export const AccountSettings: React.FC = () => {
                 `}
               >
                 <div className="flex items-center space-x-2">
-                  <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span>{tab.label}</span>
-                  {(tab.id==='branding' && brandingDirty) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Unsaved</span>}
-                  {(tab.id==='businessHours' && hoursDirty) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Unsaved</span>}
-                  {(tab.id==='tax' && taxDirty) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Unsaved</span>}
-                  {(tab.id==='invoices' && invoicesDirty) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Unsaved</span>}
-                  {(tab.id==='notifications' && notificationsDirty) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Unsaved</span>}
-                  {(tab.id==='billing' && billingDirty) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Unsaved</span>}
+                  <Icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-blue-600' : 'text-gray-500'}`} />
+                  <span className={`${activeTab === tab.id ? 'text-blue-900' : 'text-gray-900'}`}>{tab.label}</span>
                 </div>
               </button>
             );
@@ -672,12 +1422,26 @@ export const AccountSettings: React.FC = () => {
 
       {/* Tab Content */}
       <div className="mt-6">
-        {activeTab === 'branding' && renderBrandingTab()}
-        {activeTab === 'businessHours' && renderBusinessHoursTab()}
-        {activeTab === 'tax' && renderTaxTab()}
-        {activeTab === 'invoices' && renderInvoiceTemplatesTab()}
-        {activeTab === 'billing' && renderBillingTab()}
-        {activeTab === 'notifications' && renderNotificationsTab()}
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading...</span>
+          </div>
+        )}
+        
+        {!loading && (
+          <>
+            {activeTab === 'profile' && renderProfileTab()}
+            {activeTab === 'account' && renderAccountTab()}
+            {activeTab === 'branding' && renderBrandingTab()}
+            {activeTab === 'businessHours' && renderBusinessHoursTab()}
+            {activeTab === 'tax' && renderTaxTab()}
+            {activeTab === 'invoices' && renderInvoiceTemplatesTab()}
+            {activeTab === 'notifications' && renderNotificationsTab()}
+            {activeTab === 'security' && renderSecurityTab()}
+            {activeTab === 'team' && renderTeamTab()}
+          </>
+        )}
       </div>
     </div>
   );

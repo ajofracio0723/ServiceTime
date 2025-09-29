@@ -66,7 +66,7 @@ export const EstimatePreview: React.FC<EstimatePreviewProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 gap-3 flex-col sm:flex-row">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Estimate Preview</h2>
             <div className="flex items-center space-x-3 mt-1">
@@ -76,12 +76,12 @@ export const EstimatePreview: React.FC<EstimatePreviewProps> = ({
               </span>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
             {!isClientView && (
               <>
                 <button
                   onClick={onDownload}
-                  className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
+                  className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 w-full sm:w-auto"
                   title="Download PDF"
                 >
                   <Download className="w-5 h-5" />
@@ -89,7 +89,7 @@ export const EstimatePreview: React.FC<EstimatePreviewProps> = ({
                 {estimate.status === 'draft' && (
                   <button
                     onClick={onSend}
-                    className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-100"
+                    className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-100 w-full sm:w-auto"
                     title="Send to Client"
                   >
                     <Send className="w-5 h-5" />
@@ -97,7 +97,7 @@ export const EstimatePreview: React.FC<EstimatePreviewProps> = ({
                 )}
               </>
             )}
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 w-full sm:w-auto text-center">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -232,7 +232,7 @@ export const EstimatePreview: React.FC<EstimatePreviewProps> = ({
 
           {/* Totals */}
           <div className="flex justify-end">
-            <div className="w-80 space-y-2">
+            <div className="w-full sm:w-80 space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
                 <span>${estimate.subtotal.toFixed(2)}</span>
@@ -313,17 +313,17 @@ export const EstimatePreview: React.FC<EstimatePreviewProps> = ({
               <p className="text-blue-700 mb-4">
                 Please review the estimate details above and choose one of the following options:
               </p>
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <button
                   onClick={onApprove}
-                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 w-full sm:w-auto"
                 >
                   <CheckCircle className="w-5 h-5" />
                   <span>Approve Estimate</span>
                 </button>
                 <button
                   onClick={onReject}
-                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 flex items-center justify-center gap-2 w-full sm:w-auto"
                 >
                   <XCircle className="w-5 h-5" />
                   <span>Reject Estimate</span>

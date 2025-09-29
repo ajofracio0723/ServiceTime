@@ -2,6 +2,112 @@ import { Estimate } from '../types/domains/Estimate';
 
 export const sampleEstimates: Estimate[] = [
   {
+    id: 'est-draft-001',
+    estimateNumber: 'EST-2024-DRAFT',
+    clientId: 'client-001',
+    propertyId: 'prop-001',
+    title: 'Draft Electrical Repair',
+    description: 'Electrical outlet repair and safety inspection - DRAFT',
+    items: [
+      {
+        id: 'item-draft-001',
+        type: 'service',
+        name: 'Electrical Inspection',
+        description: 'Complete electrical safety inspection',
+        category: 'electrical',
+        quantity: 1,
+        unitPrice: 150,
+        taxable: true,
+        total: 150
+      },
+      {
+        id: 'item-draft-002',
+        type: 'part',
+        name: 'GFCI Outlet',
+        description: 'Ground fault circuit interrupter outlet',
+        category: 'electrical',
+        quantity: 2,
+        unitPrice: 25,
+        taxable: true,
+        total: 50
+      }
+    ],
+    subtotal: 200,
+    taxes: [{ name: 'Sales Tax', rate: 8.25, amount: 16.50 }],
+    totalTaxAmount: 16.50,
+    discounts: [],
+    totalDiscountAmount: 0,
+    total: 216.50,
+    terms: {
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      paymentTerms: 'Net 30',
+      warrantyPeriod: '1 year'
+    },
+    depositRequirement: { isRequired: false },
+    clientApproval: { isApproved: false },
+    status: 'draft',
+    attachments: [],
+    createdBy: 'current-user',
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'est-approved-001',
+    estimateNumber: 'EST-2024-APPROVED',
+    clientId: 'client-001',
+    propertyId: 'prop-001',
+    title: 'Approved Plumbing Repair',
+    description: 'Emergency plumbing repair for kitchen sink leak - APPROVED BY CLIENT',
+    items: [
+      {
+        id: 'item-approved-001',
+        type: 'service',
+        name: 'Plumbing Repair Service',
+        description: 'Fix kitchen sink leak and replace faucet',
+        category: 'plumbing',
+        quantity: 1,
+        unitPrice: 250,
+        taxable: true,
+        total: 250
+      },
+      {
+        id: 'item-approved-002',
+        type: 'part',
+        name: 'Kitchen Faucet',
+        description: 'High-quality kitchen faucet replacement',
+        category: 'plumbing',
+        quantity: 1,
+        unitPrice: 180,
+        taxable: true,
+        total: 180
+      }
+    ],
+    subtotal: 430,
+    taxes: [{ name: 'Sales Tax', rate: 8.25, amount: 35.48 }],
+    totalTaxAmount: 35.48,
+    discounts: [],
+    totalDiscountAmount: 0,
+    total: 465.48,
+    terms: {
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      paymentTerms: 'Net 30',
+      warrantyPeriod: '1 year'
+    },
+    depositRequirement: { isRequired: false },
+    clientApproval: { 
+      isApproved: true, 
+      approvedAt: new Date().toISOString(),
+      approvedBy: 'John Smith',
+      signature: 'client-signature-data'
+    },
+    status: 'approved',
+    attachments: [],
+    createdBy: 'current-user',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    approvedAt: new Date().toISOString()
+  },
+  {
     id: 'est-001-2024001',
     estimateNumber: 'EST-2024-001',
     clientId: 'client-001',

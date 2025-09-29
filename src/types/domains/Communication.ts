@@ -34,6 +34,8 @@ export interface Communication {
   subject?: string;
   content: string;
   status: CommunicationStatus;
+  // Provider message identifier to reconcile webhook receipts
+  messageId?: string;
   scheduledFor?: string;
   sentAt?: string;
   receipt?: CommunicationReceipt;
